@@ -1,8 +1,16 @@
 import Test.QuickCheck
+import Control.Monad
 
-newtype Num a => BBox a = (a,a)
+data Point = Point Int Int
 
-data RTree a = Point a | Branch BBox (RTree a) (RTree a)
+data BBox = BBox Point Point
 
-instance Arbitrary BBox where
-  arbitrary = (arbitrary a, arbitrary a)
+data RTree = Leaf BBox Int | Branch BBox RTree RTree
+
+prop_RevRev xs = reverse (reverse xs) == xs
+  where types = xs::[Int]
+
+instance Arbitrary Point where
+  arbitrary = do x <- choose (0,10)
+                 y <- choose (0,10)
+                 return (Point x y)

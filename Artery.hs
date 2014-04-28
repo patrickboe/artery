@@ -25,7 +25,8 @@ data RTree = Leaf Box Int | Branch Box RTree RTree
 
 data Entry = Entry Point Int
 
-contains x y = x == y
+contains (Box a b) (Box c d) =
+  not ((a `rightOf` c) || (a `above` c) || (b `leftOf` d) || (b `below` d))
 
 (Point a b) `leftOf` (Point c d) = a < c
 

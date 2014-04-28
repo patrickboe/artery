@@ -39,11 +39,19 @@ prop_ContainingBoxSurroundsHorizontally x@(Box a b) y@(Box c d) =
 prop_ContainingBoxSurroundsVertically x@(Box a b) y@(Box c d) =
   (a `above` c) && (b `above` d) ==> not (x `contains` y)
 
-prop_StrictlyInteriorBoxIsContained x@(Box a b) y@(Box c d) =
-  (a `above` c) && (b `below` d) && (a `leftOf` c) && (b `rightOf` d) ==> x `contains` y
+prop_ABoxWithBordersWithinAnotherBoxIsContained b =
+  forAll (innerBoxesOf b) $ (contains b)
+    where innerBoxesOf (Box (Point x1 y1) (Point x2 y2)) =
+            do (x3,x4) <- chooseTwo x1 x2
+               (y3,y4) <- chooseTwo y1 y2
+               return (bound (Point x3 y3) (Point x4 y4))
+          chooseTwo a b = liftM2 (,) (choose (a,b)) (choose (a,b))
+
+prop_ABoxSharingABoundaryButOtherwiseInteriorIsContained =
+  (Box (Point 0 5) (Point 5 10)) `contains` (Box (Point 0 6) (Point 4 8))
 
 prop_BoundsListBottomLeftPointFirst (Box p1 p2) =
-    not ((p1 `rightOf` p2) || (p1 `above` p2))
+  not ((p1 `rightOf` p2) || (p1 `above` p2))
 
 prop_ConstructedBoundsAreSameAsThoseOfTheOriginalPoints a@(Point x1 y1) b@(Point x2 y2) =
   case (bound a b) of

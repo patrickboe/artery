@@ -47,9 +47,6 @@ prop_ABoxWithBordersWithinAnotherBoxIsContained b =
                return (bound (Point x3 y3) (Point x4 y4))
           chooseTwo a b = liftM2 (,) (choose (a,b)) (choose (a,b))
 
-prop_ABoxSharingABoundaryButOtherwiseInteriorIsContained =
-  (Box (Point 0 5) (Point 5 10)) `contains` (Box (Point 0 6) (Point 4 8))
-
 prop_BoundsListBottomLeftPointFirst (Box p1 p2) =
   not ((p1 `rightOf` p2) || (p1 `above` p2))
 
@@ -58,3 +55,7 @@ prop_ConstructedBoundsAreSameAsThoseOfTheOriginalPoints a@(Point x1 y1) b@(Point
     (Box (Point x3 y3) (Point x4 y4)) ->
       (max x1 x2) == (max x3 x4) && (max y1 y2) == (max y3 y4) &&
       (min x1 x2) == (min x3 x4) && (min y1 y2) == (min y3 y4)
+
+prop_FuseProducesABoxContainingThePreviousTwoBoxes b1 b2 =
+  let papa = fuse b1 b2 in
+      papa `contains` b1 && papa `contains` b2

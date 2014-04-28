@@ -10,7 +10,8 @@ module Artery
    leftOf,
    rightOf,
    above,
-   below
+   below,
+   fuse
   )
   where
 
@@ -27,6 +28,10 @@ data Entry = Entry Point Int
 
 contains (Box a b) (Box c d) =
   not ((a `rightOf` c) || (a `above` c) || (b `leftOf` d) || (b `below` d))
+
+fuse :: Box -> Box -> Box
+fuse (Box (Point x1 y1) (Point x2 y2)) (Box (Point x3 y3) (Point x4 y4)) =
+  Box (Point (min x1 x3) (min y1 y3)) (Point (max x2 x4) (max y2 y4))
 
 (Point a b) `leftOf` (Point c d) = a < c
 

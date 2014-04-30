@@ -7,7 +7,8 @@ import Artery
 import Control.Monad
 import Test.QuickCheck
 import Test.QuickCheck.All
-import Data.List
+import Data.List hiding (insert)
+import qualified Data.Set as Set
 
 runTests = $quickCheckAll
 
@@ -59,3 +60,9 @@ prop_ConstructedBoundsAreSameAsThoseOfTheOriginalPoints a@(Point x1 y1) b@(Point
 prop_FuseProducesABoxContainingThePreviousTwoBoxes b1 b2 =
   let papa = fuse b1 b2 in
       papa `contains` b1 && papa `contains` b2
+
+prop_InsertAugmentsComputedSet es rt =
+  let rt' = foldr insert rt es
+  in toSet rt' == (toSet rt) `Set.union` (Set.fromList es)
+    where toSet = Set.fromList . entries
+          types = (es::[Entry], rt::RTree)

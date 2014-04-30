@@ -11,27 +11,31 @@ module Artery
    rightOf,
    above,
    below,
-   fuse
+   fuse,
+   insert,
+   entries
   )
   where
 
 data Point = Point Int Int
-  deriving (Eq, Show)
+  deriving (Ord, Eq, Show)
 
 data Box = Box Point Point
   deriving (Eq, Show)
 
-data RTree = Leaf Box Int | Branch Box RTree RTree
+data RTree = Leaf Box Entry | Branch Box RTree RTree
   deriving (Show)
 
 data Entry = Entry Point Int
+  deriving (Eq, Ord, Show)
 
 contains (Box a b) (Box c d) =
   not ((a `rightOf` c) || (a `above` c) || (b `leftOf` d) || (b `below` d))
 
-fuse :: Box -> Box -> Box
 fuse (Box (Point x1 y1) (Point x2 y2)) (Box (Point x3 y3) (Point x4 y4)) =
   Box (Point (min x1 x3) (min y1 y3)) (Point (max x2 x4) (max y2 y4))
+
+area (Box (Point x1 y1) (Point x2 y2)) = (x2 - x1) * (y2 - y1)
 
 (Point a b) `leftOf` (Point c d) = a < c
 
@@ -54,3 +58,6 @@ remove e t = t
 
 find :: Box -> RTree -> [Entry]
 find b t = []
+
+entries :: RTree -> [Entry]
+entries t = []

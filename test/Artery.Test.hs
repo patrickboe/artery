@@ -65,4 +65,3 @@ prop_InsertAugmentsComputedSet es rt =
   let rt' = foldr insert rt es
   in toSet rt' == (toSet rt) `Set.union` (Set.fromList es)
     where toSet = Set.fromList . entries
-          types = (es::[Entry], rt::RTree)

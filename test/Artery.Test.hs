@@ -7,12 +7,19 @@ import Artery
 import Control.Monad
 import Test.QuickCheck
 import Test.QuickCheck.All
-import Data.List hiding (insert)
+import Data.List hiding (insert,find)
 import qualified Data.Set as Set
 
 runTests = $quickCheckAll
 
+toSet = Set.fromList . entries
+
 arb2 x = liftM2 x arbitrary arbitrary
+
+subsetsOf = Set.foldr maybeWith (return Set.empty)
+  where x `maybeWith` xsg =
+          do xs <- xsg
+             oneof [return (Set.insert x xs), return xs]
 
 instance Arbitrary Point where
   arbitrary = arb2 Point
@@ -39,7 +46,7 @@ prop_ContainingBoxSurroundsVertically x@(Box a b) y@(Box c d) =
   (a `above` c) && (b `above` d) ==> not (x `contains` y)
 
 prop_ABoxWithBordersWithinAnotherBoxIsContained b =
-  forAll (innerBoxesOf b) $ (contains b)
+  forAll (innerBoxesOf b) $ contains b
     where innerBoxesOf (Box (Point x1 y1) (Point x2 y2)) =
             do (x3,x4) <- chooseTwo x1 x2
                (y3,y4) <- chooseTwo y1 y2
@@ -61,5 +68,13 @@ prop_FuseProducesABoxContainingThePreviousTwoBoxes b1 b2 =
 
 prop_InsertAugmentsComputedSet es rt =
   let rt' = foldl' insert rt es
-  in toSet rt' == (toSet rt) `Set.union` (Set.fromList es)
-    where toSet = Set.fromList . entries
+  in toSet rt' == toSet rt `Set.union` Set.fromList es
+
+prop_RemoveDiminishesComputedSet es rt =
+  forAll (subsetsOf $ Set.fromList $ entries rt) $ \sub ->
+    let rt' = Set.foldl' remove rt sub
+    in toSet rt' == toSet rt `Set.difference` sub
+
+prop_FindIncludesAllEntriesInSearchBox b rt =
+  (Set.fromList $ find rt b) == (Set.fromList $ filter inBox $ entries rt)
+  where inBox (Entry p x) = b `contains` (Box p p)

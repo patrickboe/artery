@@ -13,7 +13,9 @@ module Artery
    below,
    fuse,
    insert,
-   entries
+   entries,
+   remove,
+   find
   )
   where
 
@@ -52,7 +54,7 @@ getBounds (Box a b) = (a, b)
 
 origin = (bound (Point 0 0) (Point 0 0))
 
-insert :: RTree-> Entry -> RTree
+insert :: RTree -> Entry -> RTree
 insert MT e         = Leaf e
 insert l@(Leaf _) e = Branch origin l (Leaf e)
 insert x e          = Branch origin x (Leaf e)
@@ -66,4 +68,4 @@ find t b = []
 entries :: RTree -> [Entry]
 entries MT = []
 entries (Leaf e) = [e]
-entries (Branch b s1 s2) = (entries s1) ++ (entries s2)
+entries (Branch b s1 s2) = entries s1 ++ entries s2

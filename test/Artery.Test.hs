@@ -12,21 +12,19 @@ import qualified Data.Set as Set
 
 runTests = $quickCheckAll
 
+arb2 x = liftM2 x arbitrary arbitrary
+
 instance Arbitrary Point where
-  arbitrary = liftM2 Point arbitrary arbitrary
+  arbitrary = arb2 Point
 
 instance Arbitrary Box where
-  arbitrary = liftM2 bound arbitrary arbitrary
+  arbitrary = arb2 bound
 
 instance Arbitrary Entry where
-  arbitrary = liftM2 Entry arbitrary arbitrary
+  arbitrary = arb2 Entry
 
 instance Arbitrary RTree where
-  arbitrary = sized rtree'
-    where rtree' 0 = liftM2 Leaf arbitrary arbitrary
-          rtree' n = oneof [liftM2 Leaf arbitrary arbitrary,
-                      liftM3 Branch arbitrary subtree subtree]
-            where subtree = rtree' (n `div` 2)
+  arbitrary = liftM (foldl' insert MT) arbitrary
 
 prop_BoxesWithAnUncommonPointAreUnequal w x y z =
   threeUnequal [w,x,y,z] ==> bound w x /= bound y z
@@ -62,6 +60,6 @@ prop_FuseProducesABoxContainingThePreviousTwoBoxes b1 b2 =
       papa `contains` b1 && papa `contains` b2
 
 prop_InsertAugmentsComputedSet es rt =
-  let rt' = foldr insert rt es
+  let rt' = foldl' insert rt es
   in toSet rt' == (toSet rt) `Set.union` (Set.fromList es)
     where toSet = Set.fromList . entries

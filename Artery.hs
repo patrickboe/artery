@@ -2,7 +2,7 @@ module Artery
   (
    Point(Point),
    Box(Box),
-   RTree(Leaf, Branch),
+   RTree(MT),
    Entry(Entry),
    contains,
    bound,
@@ -23,7 +23,7 @@ data Point = Point Int Int
 data Box = Box Point Point
   deriving (Eq, Show)
 
-data RTree = Leaf Box Entry | Branch Box RTree RTree
+data RTree = MT | Leaf Entry | Branch Box RTree RTree
   deriving (Show)
 
 data Entry = Entry Point Int
@@ -50,14 +50,20 @@ bound (Point x1 y1) (Point x2 y2) =
 
 getBounds (Box a b) = (a, b)
 
-insert :: Entry -> RTree -> RTree
-insert e t = t
+origin = (bound (Point 0 0) (Point 0 0))
 
-remove :: Entry -> RTree -> RTree
-remove e t = t
+insert :: RTree-> Entry -> RTree
+insert MT e         = Leaf e
+insert l@(Leaf _) e = Branch origin l (Leaf e)
+insert x e          = Branch origin x (Leaf e)
 
-find :: Box -> RTree -> [Entry]
-find b t = []
+remove :: RTree -> Entry -> RTree
+remove t e = t
+
+find :: RTree -> Box -> [Entry]
+find t b = []
 
 entries :: RTree -> [Entry]
-entries t = []
+entries MT = []
+entries (Leaf e) = [e]
+entries (Branch b s1 s2) = (entries s1) ++ (entries s2)

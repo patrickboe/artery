@@ -71,10 +71,10 @@ prop_InsertAugmentsComputedSet es rt =
   in toSet rt' == toSet rt `Set.union` Set.fromList es
 
 prop_RemoveDiminishesComputedSet es rt =
-  forAll (subsetsOf $ Set.fromList $ entries rt) $ \sub ->
+  forAll (subsetsOf $ toSet rt) $ \sub ->
     let rt' = Set.foldl' remove rt sub
     in toSet rt' == toSet rt `Set.difference` sub
 
 prop_FindIncludesAllEntriesInSearchBox b rt =
-  (Set.fromList $ find rt b) == (Set.fromList $ filter inBox $ entries rt)
+  (Set.fromList $ find rt b) == (Set.filter inBox $ toSet rt)
   where inBox (Entry p x) = b `contains` (Box p p)

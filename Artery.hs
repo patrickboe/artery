@@ -1,3 +1,5 @@
+{-# LANGUAGE StandaloneDeriving, FlexibleInstances #-}
+
 module Artery
   (
    Point(Point),
@@ -25,11 +27,15 @@ data Point = Point Int Int
 data Box = Box Point Point
   deriving (Eq, Show)
 
-data RTree = MT | Leaf Entry | Branch Box RTree RTree
-  deriving (Show)
+data RTree a = MT | Leaf (Entry a) | Branch Box (RTree a) (RTree a)
 
-data Entry = Entry Point Int
-  deriving (Eq, Ord, Show)
+deriving instance Show a => Show (RTree a)
+
+data Entry a = Entry Point a
+
+deriving instance Eq a => Eq (Entry a)
+deriving instance Ord a => Ord (Entry a)
+deriving instance Show a => Show (Entry a)
 
 contains (Box a b) (Box c d) =
   not ((a `rightOf` c) || (a `above` c) || (b `leftOf` d) || (b `below` d))
@@ -54,18 +60,18 @@ getBounds (Box a b) = (a, b)
 
 origin = (bound (Point 0 0) (Point 0 0))
 
-insert :: RTree -> Entry -> RTree
+insert :: (RTree a) -> (Entry a) -> (RTree a)
 insert MT e         = Leaf e
 insert l@(Leaf _) e = Branch origin l (Leaf e)
 insert x e          = Branch origin x (Leaf e)
 
-remove :: RTree -> Entry -> RTree
+remove :: (RTree a) -> (Entry a) -> (RTree a)
 remove t e = t
 
-find :: RTree -> Box -> [Entry]
+find :: (RTree a) -> Box -> [(Entry a)]
 find t b = []
 
-entries :: RTree -> [Entry]
+entries :: (RTree a) -> [(Entry a)]
 entries MT = []
 entries (Leaf e) = [e]
 entries (Branch b s1 s2) = entries s1 ++ entries s2

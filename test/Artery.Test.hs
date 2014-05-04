@@ -27,10 +27,10 @@ instance Arbitrary Point where
 instance Arbitrary Box where
   arbitrary = arb2 bound
 
-instance Arbitrary Entry where
+instance Arbitrary a => Arbitrary (Entry a) where
   arbitrary = arb2 Entry
 
-instance Arbitrary RTree where
+instance Arbitrary a => Arbitrary (RTree a) where
   arbitrary = liftM (foldl' insert MT) arbitrary
 
 prop_BoxesWithAnUncommonPointAreUnequal w x y z =

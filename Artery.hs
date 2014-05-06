@@ -1,4 +1,4 @@
-{-# LANGUAGE StandaloneDeriving, FlexibleInstances #-}
+{-# LANGUAGE StandaloneDeriving, FlexibleInstances, MultiParamTypeClasses #-}
 
 module Artery
   (
@@ -37,8 +37,15 @@ deriving instance Eq a => Eq (Entry a)
 deriving instance Ord a => Ord (Entry a)
 deriving instance Show a => Show (Entry a)
 
-contains (Box a b) (Box c d) =
-  not ((a `rightOf` c) || (a `above` c) || (b `leftOf` d) || (b `below` d))
+class (Eq e) => Set s e where
+  contains :: s -> e -> Bool
+
+instance Set Box Box where
+  contains (Box a b) (Box c d) =
+    not ((a `rightOf` c) || (a `above` c) || (b `leftOf` d) || (b `below` d))
+
+instance (Eq a) => Set (RTree a) a where
+  contains t x = True
 
 fuse (Box (Point x1 y1) (Point x2 y2)) (Box (Point x3 y3) (Point x4 y4)) =
   Box (Point (min x1 x3) (min y1 y3)) (Point (max x2 x4) (max y2 y4))

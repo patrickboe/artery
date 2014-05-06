@@ -38,6 +38,7 @@ prop_BoxesWithAnUncommonPointAreUnequal w x y z =
     where threeUnequal = (> 2) . length . nub
 
 prop_EqualBoxesContainEachOther b = b `contains` b
+  where types = [b :: Box]
 
 prop_ContainingBoxSurroundsHorizontally x@(Box a b) y@(Box c d) =
   (a `leftOf` c) && (b `leftOf` d) ==> not (x `contains` y)

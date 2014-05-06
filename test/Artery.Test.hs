@@ -71,6 +71,10 @@ prop_InsertAugmentsComputedSet es rt =
   let rt' = foldl' insert rt es
   in toSet rt' == toSet rt `Set.union` Set.fromList es
 
+prop_ATreeContainsExactlyTheSetOfInsertedElements es e =
+  let rt = foldl' insert MT es
+  in (all (contains rt) es) && ((rt `contains` e) == (e `elem` es))
+
 prop_RemoveDiminishesComputedSet es rt =
   forAll (subsetsOf $ toSet rt) $ \sub ->
     let rt' = Set.foldl' remove rt sub

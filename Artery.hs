@@ -44,7 +44,7 @@ instance Set Box Box where
   contains (Box a b) (Box c d) =
     not ((a `rightOf` c) || (a `above` c) || (b `leftOf` d) || (b `below` d))
 
-instance (Eq a) => Set (RTree a) a where
+instance (Eq a) => Set (RTree a) (Entry a) where
   contains t x = True
 
 fuse (Box (Point x1 y1) (Point x2 y2)) (Box (Point x3 y3) (Point x4 y4)) =

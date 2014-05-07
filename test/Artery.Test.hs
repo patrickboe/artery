@@ -97,9 +97,9 @@ prop_FindIncludesAllEntriesInSearchBox b rt =
 
 prop_AnyRemovalOrderProducesAConsistentSeriesOfEntrySets es =
   forAll (shufflesOf es) $ \removals ->
-    all sameEntrySets $ scanl removeEntry ((build es),es) removals
+    all sameEntrySets $ scanl removeFromBoth ((build es),es) removals
     where
-      removeEntry (tree, xs) e = (tree `remove` e, delete e xs)
+      removeFromBoth (tree, xs) e = (tree `remove` e, delete e xs)
       sameEntrySets (tree, entries) = toSet tree == Set.fromList entries
 
 {-

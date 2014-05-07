@@ -10,6 +10,8 @@ import Test.QuickCheck.All
 import Data.List hiding (insert,find)
 import qualified Data.Set as Set
 
+build es = foldl' insert MT es
+
 runTests = $quickCheckAll
 
 toSet = Set.fromList . entries
@@ -17,9 +19,18 @@ toSet = Set.fromList . entries
 arb2 x = liftM2 x arbitrary arbitrary
 
 subsetsOf = Set.foldr maybeWith (return Set.empty)
-  where x `maybeWith` xsg =
+  where maybeWith x xsg =
           do xs <- xsg
              oneof [return (Set.insert x xs), return xs]
+
+indices xs = take (length xs) (iterate (1 +) 0)
+
+cut i xs = (take i xs) ++ (drop (i + 1) xs)
+
+shufflesOf [] = return []
+shufflesOf xs = do i <- oneof $ map return $ indices xs
+                   s <- shufflesOf $ cut i xs
+                   return $ xs !! i : s
 
 instance Arbitrary Point where
   arbitrary = arb2 Point
@@ -31,7 +42,7 @@ instance Arbitrary a => Arbitrary (Entry a) where
   arbitrary = arb2 Entry
 
 instance Arbitrary a => Arbitrary (RTree a) where
-  arbitrary = liftM (foldl' insert MT) arbitrary
+  arbitrary = liftM build arbitrary
 
 prop_BoxesWithAnUncommonPointAreUnequal w x y z =
   threeUnequal [w,x,y,z] ==> bound w x /= bound y z
@@ -72,7 +83,7 @@ prop_InsertAugmentsComputedSet es rt =
   in toSet rt' == toSet rt `Set.union` Set.fromList es
 
 prop_ATreeContainsExactlyTheSetOfInsertedElements es e =
-  let rt = foldl' insert MT es
+  let rt = build es
   in (all (contains rt) es) && ((rt `contains` e) == (e `elem` es))
 
 prop_RemoveDiminishesComputedSet es rt =
@@ -83,3 +94,18 @@ prop_RemoveDiminishesComputedSet es rt =
 prop_FindIncludesAllEntriesInSearchBox b rt =
   (Set.fromList $ find rt b) == (Set.filter inBox $ toSet rt)
   where inBox (Entry p x) = b `contains` (Box p p)
+
+prop_AnyRemovalOrderProducesAConsistentSeriesOfEntrySets es =
+  forAll (shufflesOf es) $ \removals ->
+    all sameEntrySets $ scanl removeEntry ((build es),es) removals
+    where
+      removeEntry (tree, xs) e = (tree `remove` e, delete e xs)
+      sameEntrySets (tree, entries) = toSet tree == Set.fromList entries
+
+{-
+  -- todo:
+  -- random set of insertions and removals
+  -- search intersection
+  -- nearest
+  -- nearestk
+-}

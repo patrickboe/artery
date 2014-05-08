@@ -41,7 +41,7 @@ addToBoth e (tree, xs) = (tree `insert` e, e : xs)
 newtype Act a = Act ((RTree a,[Entry a]) -> (RTree a,[Entry a]))
 
 instance Show a => Show (Act a) where
-  show x = "(some Action)"
+  show x = "(some Act)"
 
 instance (Arbitrary a,Eq a) => Arbitrary (Act a) where
   arbitrary = oneof $ map toChangeGen [addToBoth,removeFromBoth]

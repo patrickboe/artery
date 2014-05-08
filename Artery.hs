@@ -2,22 +2,9 @@
 
 module Artery
   (
-   Point(Point),
-   Box(Box),
-   RTree(MT),
-   Entry(Entry),
-   contains,
-   bound,
-   getBounds,
-   leftOf,
-   rightOf,
-   above,
-   below,
-   fuse,
-   insert,
-   entries,
-   remove,
-   find
+   Point(Point), Box(Box), RTree(MT), Entry(Entry),
+   contains, bound, getBounds, leftOf, rightOf, above, below, fuse,
+   insert, entries, remove, find
   )
   where
 

@@ -41,11 +41,12 @@ addToBoth e (tree, xs) = (tree `insert` e, e : xs)
 newtype Act a = Act ((RTree a,[Entry a]) -> (RTree a,[Entry a]))
 
 instance Show a => Show (Act a) where
-  show x = "action"
+  show x = "(some Action)"
 
-arbAction = oneof $ map toChangeGen [addToBoth,removeFromBoth]
-  where toChangeGen f = do e <- arbitrary
-                           return $ Act $ f e
+instance (Arbitrary a,Eq a) => Arbitrary (Act a) where
+  arbitrary = oneof $ map toChangeGen [addToBoth,removeFromBoth]
+    where toChangeGen f = do e <- arbitrary
+                             return $ Act $ f e
 
 instance Arbitrary Point where
   arbitrary = arb2 Point
@@ -58,13 +59,6 @@ instance Arbitrary a => Arbitrary (Entry a) where
 
 instance Arbitrary a => Arbitrary (RTree a) where
   arbitrary = liftM build arbitrary
-
-{-
-instance Co
-  coarbitrary MT = variant 0
-  coarbitrary (Leaf x) = variant 1 . coarbitrary x
-  coarbitrary (RTree l r) = variant 1 . coarbitrary l . coarbitrary r
- -}
 
 prop_BoxesWithAnUncommonPointAreUnequal w x y z =
   threeUnequal [w,x,y,z] ==> bound w x /= bound y z
@@ -122,9 +116,8 @@ prop_AnyRemovalOrderProducesAConsistentSeriesOfEntrySets es =
     all sameEntrySets $ scanl (flip removeFromBoth) ((build es),es) removals
 
 prop_AnySequenceOfInsertionsAndRemovalsProducesConsistentEntrySets es acts =
-  forAll (listOf arbAction) $ \acts ->
-    all sameEntrySets $ scanl run ((build es),es) acts
-    where run tuple (Act f) = f tuple
+  all sameEntrySets $ scanl run ((build es),es) acts
+  where run tuple (Act f) = f tuple
 
 {-
   -- todo:

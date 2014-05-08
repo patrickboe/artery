@@ -45,8 +45,7 @@ instance Show a => Show (Act a) where
 
 instance (Arbitrary a,Eq a) => Arbitrary (Act a) where
   arbitrary = oneof $ map toChangeGen [addToBoth,removeFromBoth]
-    where toChangeGen f = do e <- arbitrary
-                             return $ Act $ f e
+    where toChangeGen f = liftM (Act . f) arbitrary
 
 instance Arbitrary Point where
   arbitrary = arb2 Point

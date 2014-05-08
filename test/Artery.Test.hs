@@ -18,11 +18,6 @@ toSet = Set.fromList . entries
 
 arb2 x = liftM2 x arbitrary arbitrary
 
-subsetsOf = Set.foldr maybeWith (return Set.empty)
-  where maybeWith x xsg =
-          do xs <- xsg
-             oneof [return (Set.insert x xs), return xs]
-
 indices xs = take (length xs) (iterate (1 +) 0)
 
 cut i xs = (take i xs) ++ (drop (i + 1) xs)
@@ -43,7 +38,7 @@ newtype Act a = Act ((RTree a,[Entry a]) -> (RTree a,[Entry a]))
 instance Show a => Show (Act a) where
   show x = "(some Act)"
 
-instance (Arbitrary a,Eq a) => Arbitrary (Act a) where
+instance (Arbitrary a,Ord a) => Arbitrary (Act a) where
   arbitrary = oneof $ map toChangeGen [addToBoth,removeFromBoth]
     where toChangeGen f = liftM (Act . f) arbitrary
 
@@ -96,10 +91,17 @@ prop_FuseProducesABoxContainingThePreviousTwoBoxes b1 b2 =
 prop_InsertAugmentsComputedSet es rt =
   let rt' = foldl' insert rt es
   in toSet rt' == toSet rt `Set.union` Set.fromList es
+  where types = (es :: [Entry Int],rt :: RTree Int)
 
+{-
 prop_ATreeContainsExactlyTheSetOfInsertedElements es e =
   let rt = build es
   in (all (contains rt) es) && ((rt `contains` e) == (e `elem` es))
+
+subsetsOf = Set.foldr maybeWith (return Set.empty)
+  where maybeWith x xsg =
+          do xs <- xsg
+             oneof [return (Set.insert x xs), return xs]
 
 prop_RemoveDiminishesComputedSet es rt =
   forAll (subsetsOf $ toSet rt) $ \sub ->
@@ -117,6 +119,7 @@ prop_AnyRemovalOrderProducesAConsistentSeriesOfEntrySets es =
 prop_AnySequenceOfInsertionsAndRemovalsProducesConsistentEntrySets es acts =
   all sameEntrySets $ scanl run ((build es),es) acts
   where run tuple (Act f) = f tuple
+-}
 
 {-
   -- todo:

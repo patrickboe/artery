@@ -50,14 +50,25 @@ area (Box (Point x1 y1) (Point x2 y2)) = (x2 - x1) * (y2 - y1)
 bound (Point x1 y1) (Point x2 y2) =
   Box (Point (min x1 x2) (min y1 y2)) (Point (max x1 x2) (max y1 y2))
 
+toBox p = Box p p
+
 getBounds (Box a b) = (a, b)
 
-origin = (bound (Point 0 0) (Point 0 0))
+origin = toBox (Point 0 0)
+
+engulf MT p = toBox p
+engulf (Leaf (Entry p1 x)) p2 = bound p1 p2
+engulf (Branch b l r) p = fuse b (toBox p)
 
 insert :: (RTree a) -> (Entry a) -> (RTree a)
-insert MT e         = Leaf e
-insert l@(Leaf _) e = Branch origin l (Leaf e)
-insert x e          = Branch origin x (Leaf e)
+insert MT e                         = Leaf e
+insert l@(Leaf _) e@(Entry p _)     = Branch (engulf l p) l (Leaf e)
+insert (Branch b l r) e@(Entry p x) =
+  let sl = engulf l p; sr = engulf r p
+  in
+    if area sl < area sr
+    then Branch (sl `fuse` b) (insert l e) r
+    else Branch (sr `fuse` b) l (insert r e)
 
 remove :: (RTree a) -> (Entry a) -> (RTree a)
 remove t e = t

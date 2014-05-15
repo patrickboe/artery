@@ -2,7 +2,7 @@
 
 module Artery
   (
-   Point(Point), Box(Box), RTree(MT), Entry(Entry),
+   Point(Point), Box(Box), RTree, Entry(Entry),
    contains, bound, getBounds, leftOf, rightOf, above, below, fuse,
    insert, entries, remove, find
   )
@@ -14,7 +14,7 @@ data Point = Point Int Int
 data Box = Box Point Point
   deriving (Eq, Show)
 
-data RTree a = MT | Leaf (Entry a) | Branch Box (RTree a) (RTree a)
+data RTree a = Leaf [Entry a] | Branch Box [RTree a]
 
 deriving instance Show a => Show (RTree a)
 
@@ -56,15 +56,20 @@ getBounds (Box a b) = (a, b)
 
 origin = toBox (Point 0 0)
 
-engulf MT p = toBox p
 engulf (Leaf (Entry p1 x)) p2 = bound p1 p2
 engulf (Branch b l r) p = fuse b (toBox p)
 
+blocksize = 4
+
+zipup xs f = zip xs $ map f xs
+
+zipup2 xs f g = 
+
 insert :: (RTree a) -> (Entry a) -> (RTree a)
-insert MT e                         = Leaf e
-insert l@(Leaf _) e@(Entry p _)     = Branch (engulf l p) l (Leaf e)
-insert (Branch b l r) e@(Entry p x) =
-  let sl = engulf l p; sr = engulf r p
+insert (Leaf es) e =
+ (if length es < blocksize then Leaf else split-leaf) $ e : es
+insert (Branch b ts) e@(Entry p x) =
+  let sls = zipup2 ts (`engulf` p) area
   in
     if area sl < area sr
     then Branch (sl `fuse` b) (insert l e) r
@@ -77,6 +82,5 @@ find :: (RTree a) -> Box -> [(Entry a)]
 find t b = []
 
 entries :: (RTree a) -> [(Entry a)]
-entries MT = []
-entries (Leaf e) = [e]
-entries (Branch b s1 s2) = entries s1 ++ entries s2
+entries (Leaf es) = es
+entries (Branch b ts) = foldr1 (++) map entries ts

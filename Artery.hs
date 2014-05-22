@@ -68,23 +68,33 @@ where
 
 {-TODO: think about abstracting a 'node' for less repetition around bounding boxes -}
 insert :: (RTree a) -> (Entry a) -> (RTree a)
-insert t e = case (broaden t e) of
-               (x, None) -> x
-               (x, Just y) -> Branch 
 insert (Leaf b es) e@(Entry p x) =
  (if length es < blocksize
-  then Leaf $ b `fuse` $ toBox p
+  then Leaf $ fuse b $ toBox p
   else split-leaf) $ e : es
+  where split-leaf = split Leaf (\(Entry p _) -> toBox p)
 insert (Branch b ts) e@(Entry p x) =
   let
     boundArea p (Leaf b _) = area $ fuse b $ toBox p
     boundArea p (Branch b _) = area $ fuse b $ toBox p
     st:sts = minFirst (boundArea p) ts
-    subtrees = (insert st e) ++ sts
+    subtrees = (insert st e) : sts
   in
   (if length subtrees <= blocksize
-   then Branch $ b `fuse` $ toBox p
+   then Branch $ fuse b $ toBox p
    else split-branch) subtrees
+   where split-branch = split Branch (\(Branch b _) -> b)
+
+split cons getBox xs =
+  let (b,b') = farthest-pair $ map getBox xs
+  in foldl' split-iter (cons b [],cons b' []) xs
+  where
+    split-iter ((cons b xs),(cons b' xs')) x =
+      if area (fuse (getBox x) b) < area (fuse (getBox x) b')
+      then ((cons b x:xs),(cons b' xs'))
+      else ((cons b xs),(cons b' x:xs'))
+    farthest-pair (x:(y:ys)) =
+      
 
 remove :: (RTree a) -> (Entry a) -> (RTree a)
 remove t e = t

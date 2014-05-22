@@ -14,7 +14,7 @@ data Point = Point Int Int
 data Box = Box Point Point
   deriving (Eq, Show)
 
-data RTree a = Leaf [Entry a] | Branch Box [RTree a]
+data RTree a = Leaf Box [Entry a] | Branch Box [RTree a]
 
 deriving instance Show a => Show (RTree a)
 
@@ -56,24 +56,35 @@ getBounds (Box a b) = (a, b)
 
 origin = toBox (Point 0 0)
 
-engulf (Leaf (Entry p1 x)) p2 = bound p1 p2
-engulf (Branch b l r) p = fuse b (toBox p)
-
 blocksize = 4
 
-zipup xs f = zip xs $ map f xs
+minFirst f xs = foldl' consMin [] xs
+where
+  consMin (best:rest) x =
+    if f best < f c
+    then best:(x:rest)
+    else x:(best:rest)
+  consMin [] x = [x]
 
-zipup2 xs f g = 
-
+{-TODO: think about abstracting a 'node' for less repetition around bounding boxes -}
 insert :: (RTree a) -> (Entry a) -> (RTree a)
-insert (Leaf es) e =
- (if length es < blocksize then Leaf else split-leaf) $ e : es
+insert t e = case (broaden t e) of
+               (x, None) -> x
+               (x, Just y) -> Branch 
+insert (Leaf b es) e@(Entry p x) =
+ (if length es < blocksize
+  then Leaf $ b `fuse` $ toBox p
+  else split-leaf) $ e : es
 insert (Branch b ts) e@(Entry p x) =
-  let sls = zipup2 ts (`engulf` p) area
+  let
+    boundArea p (Leaf b _) = area $ fuse b $ toBox p
+    boundArea p (Branch b _) = area $ fuse b $ toBox p
+    st:sts = minFirst (boundArea p) ts
+    subtrees = (insert st e) ++ sts
   in
-    if area sl < area sr
-    then Branch (sl `fuse` b) (insert l e) r
-    else Branch (sr `fuse` b) l (insert r e)
+  (if length subtrees <= blocksize
+   then Branch $ b `fuse` $ toBox p
+   else split-branch) subtrees
 
 remove :: (RTree a) -> (Entry a) -> (RTree a)
 remove t e = t
@@ -82,5 +93,5 @@ find :: (RTree a) -> Box -> [(Entry a)]
 find t b = []
 
 entries :: (RTree a) -> [(Entry a)]
-entries (Leaf es) = es
+entries (Leaf b es) = es
 entries (Branch b ts) = foldr1 (++) map entries ts

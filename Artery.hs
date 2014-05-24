@@ -86,15 +86,33 @@ insert (Branch b ts) e@(Entry p x) =
    where split-branch = split Branch (\(Branch b _) -> b)
 
 split cons getBox xs =
-  let (b,b') = farthest-pair $ map getBox xs
-  in foldl' split-iter (cons b [],cons b' []) xs
+  let (b,b') = farthestPair $ map getBox xs
+  in foldl' splitIter (cons b [],cons b' []) xs
   where
-    split-iter ((cons b xs),(cons b' xs')) x =
+    splitIter ((cons b xs),(cons b' xs')) x =
       if area (fuse (getBox x) b) < area (fuse (getBox x) b')
       then ((cons b x:xs),(cons b' xs'))
       else ((cons b xs),(cons b' x:xs'))
-    farthest-pair (x:(y:ys)) =
-      
+
+farthestPair (x:xs) =
+  foldl swapForFarther (x,x) xs
+  where swapForFarther (x,y) z =
+          let xyd = boxDist x y
+              xzd = boxDist x z
+              yzd = boxDist y z
+          in
+            if xyd > xzd & xyd > yzd
+            then (x,y)
+            else
+              if xzd > xyd & xzd > yzd
+              then (x,z)
+              else (y,z)
+farthestPair [] = (origin,origin)
+
+boxDist b1@(Box p1 p2) b2@(Box p3 p4) =
+  if b1 `overlaps` b2
+  then 0
+  else minimum $ zip edgeDist [rightEdge b1,leftEdge b1]) [leftEdge b2,rightEdge b2]
 
 remove :: (RTree a) -> (Entry a) -> (RTree a)
 remove t e = t

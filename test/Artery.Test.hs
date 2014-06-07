@@ -7,10 +7,8 @@ import Artery
 import Control.Monad
 import Test.QuickCheck
 import Test.QuickCheck.All
-import Data.List hiding (insert,find)
+import Data.List hiding (find)
 import qualified Data.Set as Set
-
-build es = foldl' insert MT es
 
 runTests = $quickCheckAll
 
@@ -31,7 +29,7 @@ sameEntrySets (tree, entries) = toSet tree == Set.fromList entries
 
 removeFromBoth e (tree, xs) = (tree `remove` e, delete e xs)
 
-addToBoth e (tree, xs) = (tree `insert` e, e : xs)
+addToBoth e (tree, xs) = (tree `with` e, e : xs)
 
 newtype Act a = Act ((RTree a,[Entry a]) -> (RTree a,[Entry a]))
 
@@ -52,7 +50,7 @@ instance Arbitrary a => Arbitrary (Entry a) where
   arbitrary = arb2 Entry
 
 instance Arbitrary a => Arbitrary (RTree a) where
-  arbitrary = liftM build arbitrary
+  arbitrary = liftM buildRTree arbitrary
 
 prop_BoxesWithAnUncommonPointAreUnequal w x y z =
   threeUnequal [w,x,y,z] ==> bound w x /= bound y z
@@ -89,19 +87,19 @@ prop_FuseProducesABoxContainingThePreviousTwoBoxes b1 b2 =
       papa `contains` b1 && papa `contains` b2
 
 prop_InsertAugmentsComputedSet es rt =
-  let rt' = foldl' insert rt es
+  let rt' = foldl' with rt es
   in toSet rt' == toSet rt `Set.union` Set.fromList es
   where types = (es :: [Entry Int],rt :: RTree Int)
 
 {-
 prop_ATreeContainsExactlyTheSetOfInsertedElements es e =
-  let rt = build es
+  let rt = buildRTree es
   in (all (contains rt) es) && ((rt `contains` e) == (e `elem` es))
 
 subsetsOf = Set.foldr maybeWith (return Set.empty)
   where maybeWith x xsg =
           do xs <- xsg
-             oneof [return (Set.insert x xs), return xs]
+             oneof [return (insert x xs), return xs]
 
 prop_RemoveDiminishesComputedSet es rt =
   forAll (subsetsOf $ toSet rt) $ \sub ->
@@ -114,10 +112,10 @@ prop_FindIncludesAllEntriesInSearchBox b rt =
 
 prop_AnyRemovalOrderProducesAConsistentSeriesOfEntrySets es =
   forAll (shufflesOf es) $ \removals ->
-    all sameEntrySets $ scanl (flip removeFromBoth) ((build es),es) removals
+    all sameEntrySets $ scanl (flip removeFromBoth) ((buildRTree es),es) removals
 
 prop_AnySequenceOfInsertionsAndRemovalsProducesConsistentEntrySets es acts =
-  all sameEntrySets $ scanl run ((build es),es) acts
+  all sameEntrySets $ scanl run ((buildRTree es),es) acts
   where run tuple (Act f) = f tuple
 -}
 

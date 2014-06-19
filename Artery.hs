@@ -39,15 +39,20 @@ instance Set Box Box where
 instance (Eq a) => Set (RTree a) (Entry a) where
   contains t x = True
 
-class BoxBounded a where
-  getBox :: a -> Box
+data Node n = Node Box [n]
 
-instance BoxBounded (RTree a) where
+class Boxed c a where
+  getBox :: (c a) -> Box
+  buildTree :: Box -> [c a] -> RTree a
+
+instance Boxed RTree a where
   getBox (Leaf b _) = b
   getBox (Branch b _) = b
+  buildTree = Branch
 
-instance BoxBounded (Entry a) where
+instance Boxed Entry a where
   getBox (Entry p _) = toBox p
+  buildTree = Leaf
 
 fuse (Box (Point x1 y1) (Point x2 y2)) (Box (Point x3 y3) (Point x4 y4)) =
   Box (Point (min x1 x3) (min y1 y3)) (Point (max x2 x4) (max y2 y4))
@@ -81,16 +86,11 @@ minFirst f xs = foldl' consMin [] xs
       else x:(best:rest)
     consMin [] x = [x]
 
-enclose :: BoxBounded c => [c] -> Box
-enclose = (foldl1' fuse) . (map getBox)
-
 with :: (RTree a) -> (Entry a) -> (RTree a)
 with MT e =
   Leaf (getBox e) [e]
 with (Leaf b es) e =
- (if length es < blocksize
-  then Leaf $ fuse b $ getBox e
-  else split Leaf) $ e : es
+  expand Leaf (e : es) b (getBox e)
 with (Branch b ts) e =
   let
     ebox = getBox e
@@ -98,29 +98,32 @@ with (Branch b ts) e =
     st:sts = minFirst (boundArea ebox) ts
     subtrees = (with st e) : sts
   in
-  (if length subtrees <= blocksize
-   then Branch $ fuse b ebox
-   else split Branch) subtrees
+    expand Branch subtrees b ebox
 
-split :: BoxBounded c => (Box -> [c] -> RTree a) -> [c] -> RTree a
-split cons ns =
-  let s = blocksize `div` 2
-      l = take s ns
-      r = drop s ns
-      bl = enclose l
-      br = enclose r
-  in Branch (fuse bl br) [cons bl l,cons br r]
+expand cons ts b box =
+  (if length ts <= blocksize
+   then cons $ fuse b box
+   else split) ts
+
+split ns =
+  let (b : (b' : others)) = farthestPairFirst ns
+      (l@(Node bl _),r@(Node br _)) =
+        foldl'
+        splitIter
+        (Node (getBox b) [b], Node (getBox b') [b'])
+        others
+  in Branch (fuse bl br) [develop l, develop r]
+  where farthestPairFirst = id
+        develop (Node b xs) = buildTree b xs
+        splitIter (x@(Node b ns),x'@(Node b' ns')) n =
+          let f = fuse (getBox n) b
+              f' = fuse (getBox n) b'
+          in
+            if area f < area f'
+            then (Node f $ n : ns, x')
+            else (x, Node f' $ n : ns')
 
 {-
-split cons getBox xs =
-  let (b,b') = farthestPair $ map getBox xs
-  in foldl' splitIter (cons b [],cons b' []) xs
-  where
-    splitIter ((cons b xs),(cons b' xs')) x =
-      if area (fuse (getBox x) b) < area (fuse (getBox x) b')
-      then ((cons b x:xs),(cons b' xs'))
-      else ((cons b xs),(cons b' x:xs'))
-
 farthestPair (x:xs) =
   foldl swapForFarther (x,x) xs
   where swapForFarther (x,y) z =

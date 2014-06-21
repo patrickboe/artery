@@ -113,8 +113,7 @@ split ns =
         (Node (getBox b) [b], Node (getBox b') [b'])
         others
   in Branch (fuse bl br) [develop l, develop r]
-  where farthestPairFirst = id
-        develop (Node b xs) = buildTree b xs
+  where develop (Node b xs) = buildTree b xs
         splitIter (x@(Node b ns),x'@(Node b' ns')) n =
           let f = fuse (getBox n) b
               f' = fuse (getBox n) b'
@@ -123,22 +122,24 @@ split ns =
             then (Node f $ n : ns, x')
             else (x, Node f' $ n : ns')
 
-{-
-farthestPair (x:xs) =
-  foldl swapForFarther (x,x) xs
-  where swapForFarther (x,y) z =
+farthestPairFirst (x : (y : xs)) =
+  foldl' swapForFarther (x : (y : [])) xs
+  where swapForFarther orig@(x : (y : xs)) z =
           let xyd = boxDist x y
               xzd = boxDist x z
               yzd = boxDist y z
           in
-            if xyd > xzd & xyd > yzd
-            then (x,y)
+            if (xyd > xzd) && (xyd > yzd)
+            then orig
             else
-              if xzd > xyd & xzd > yzd
-              then (x,z)
-              else (y,z)
-farthestPair [] = (origin,origin)
+              if (xzd > xyd) && (xzd > yzd)
+              then (x : (z : (y : xs)))
+              else (y : (z : (x : xs)))
+farthestPairFirst xs = xs
 
+boxDist x y = 0
+
+{-
 boxDist b1@(Box p1 p2) b2@(Box p3 p4) =
   if b1 `overlaps` b2
   then 0

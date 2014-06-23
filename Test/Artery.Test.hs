@@ -48,39 +48,36 @@ instance Arbitrary a => Arbitrary (RTree a) where
                  es <- arbitrary
                  return $ buildRTree $ e : es
 
+subsetsOf = Set.foldr maybeWith (return Set.empty) where
+  maybeWith x xsg =
+      do xs <- xsg
+         oneof [return (Set.insert x xs), return xs]
+
 prop_InsertAugmentsComputedSet es rt =
   let rt' = foldl' with rt es
   in toSet rt' == toSet rt `Set.union` Set.fromList es
   where types = (es :: [Entry Int],rt :: RTree Int)
 
-{-
-
-prop_ATreeContainsExactlyTheSetOfInsertedElements es e =
+ignore_prop_ATreeContainsExactlyTheSetOfInsertedElements es e =
   let rt = buildRTree es
   in (all (contains rt) es) && ((rt `contains` e) == (e `elem` es))
 
-subsetsOf = Set.foldr maybeWith (return Set.empty)
-  where maybeWith x xsg =
-          do xs <- xsg
-             oneof [return (insert x xs), return xs]
-
-prop_RemoveDiminishesComputedSet es rt =
+ignore_prop_RemoveDiminishesComputedSet es rt =
   forAll (subsetsOf $ toSet rt) $ \sub ->
     let rt' = Set.foldl' remove rt sub
     in toSet rt' == toSet rt `Set.difference` sub
 
-prop_FindIncludesAllEntriesInSearchBox b rt =
+ignore_prop_FindIncludesAllEntriesInSearchBox b rt =
   (Set.fromList $ find rt b) == (Set.filter inBox $ toSet rt)
   where inBox (Entry p x) = b `contains` (Box p p)
 
-prop_AnyRemovalOrderProducesAConsistentSeriesOfEntrySets es =
+ignore_prop_AnyRemovalOrderProducesAConsistentSeriesOfEntrySets es =
   forAll (shufflesOf es) $ \removals ->
     all sameEntrySets $ scanl (flip removeFromBoth) ((buildRTree es),es) removals
 
-prop_AnySequenceOfInsertionsAndRemovalsProducesConsistentEntrySets es acts =
+ignore_prop_AnySequenceOfInsertionsAndRemovalsProducesConsistentEntrySets es acts =
   all sameEntrySets $ scanl run ((buildRTree es),es) acts
   where run tuple (Act f) = f tuple
--}
 
 {-
   -- todo:

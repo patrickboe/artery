@@ -9,6 +9,7 @@ module Artery
   where
 
 import Data.List hiding (find)
+import Data.Function
 
 data Point = Point Int Int
   deriving (Ord, Eq, Show)
@@ -17,9 +18,9 @@ data Box = Box Point Point
   deriving (Eq, Show)
 
 data RTree a =
-  Leaf Box [Entry a] | Branch Box [RTree a] | MT
+  Leaf Box [Entry a] | Branch Box [RTree a]
 
-buildRTree es = foldl' with MT es
+buildRTree (e : es) = foldl' with (Leaf (getBox e) [e]) es
 
 deriving instance Show a => Show (RTree a)
 
@@ -87,8 +88,6 @@ minFirst f xs = foldl' consMin [] xs
     consMin [] x = [x]
 
 with :: (RTree a) -> (Entry a) -> (RTree a)
-with MT e =
-  Leaf (getBox e) [e]
 with (Leaf b es) e =
   expand Leaf (e : es) b (getBox e)
 with (Branch b ts) e =
@@ -101,6 +100,7 @@ with (Branch b ts) e =
     expand Branch subtrees b ebox
 
 expand cons ts b box =
+  {- TODO: cut out this unnecessary count -}
   (if length ts <= blocksize
    then cons $ fuse b box
    else split) ts
@@ -125,9 +125,9 @@ split ns =
 farthestPairFirst (x : (y : xs)) =
   foldl' swapForFarther (x : (y : [])) xs
   where swapForFarther orig@(x : (y : xs)) z =
-          let xyd = boxDist x y
-              xzd = boxDist x z
-              yzd = boxDist y z
+          let xyd = nodeDist x y
+              xzd = nodeDist x z
+              yzd = nodeDist y z
           in
             if (xyd > xzd) && (xyd > yzd)
             then orig
@@ -135,6 +135,8 @@ farthestPairFirst (x : (y : xs)) =
               if (xzd > xyd) && (xzd > yzd)
               then (x : (z : (y : xs)))
               else (y : (z : (x : xs)))
+          where
+            nodeDist = boxDist `on` getBox
 farthestPairFirst xs = xs
 
 boxDist x y = 0
@@ -162,6 +164,5 @@ find :: (RTree a) -> Box -> [(Entry a)]
 find t b = []
 
 entries :: (RTree a) -> [(Entry a)]
-entries MT = []
 entries (Leaf b es) = es
 entries (Branch b ts) = foldr1 (++) $ map entries ts

@@ -45,3 +45,57 @@ prop_ConstructedBoundsAreSameAsThoseOfTheOriginalPoints a@(Point x1 y1) b@(Point
 prop_FuseProducesABoxContainingThePreviousTwoBoxes b1 b2 =
   let papa = fuse b1 b2 in
       papa `contains` b1 && papa `contains` b2
+
+prop_OverlappingBoxesHaveZeroDistance b =
+  forAll (overlappingBoxesOf b) $ \b' -> distance b b' == 0
+    where
+      overlappingBoxesOf (Box (Point x1 y1) (Point x2 y2)) =
+        do x <- choose (x1, x2)
+           y <- choose (y1, y2)
+           xoffset <- choose (0, x2-x1)
+           yoffset <- choose (0, y2-y1)
+           oneof [
+            return (Box (Point x y) (Point (x+xoffset) (y+yoffset))),
+            return (Box (Point (x-xoffset) (y-yoffset)) (Point x y))
+            ]
+
+prop_DistanceIsCommutative a b = distance a b == distance b a
+  where types = (a :: Box, b :: Box)
+
+prop_BoxNextToAnotherBoxHasLineToLineDifference =
+  distancesOfRotationsAllEqual
+    (Box (Point 1 10) (Point 5 20))
+    (Box (Point 3 30) (Point 8 33))
+    10
+
+distancesOfRotationsAllEqual b1 b2 d =
+  all
+    (d ==)
+    [(distance b1 b2),
+     (distance (turn90 b1) (turn90 b2)),
+     (distance (turn180 b1) (turn180 b2)),
+     (distance (turn270 b1) (turn270 b2))]
+  where
+    orotate = rotate90 (Point 0 0)
+    turn90 (Box p q) = bound (orotate p) (orotate q)
+    turn180 = turn90 . turn90
+    turn270 = turn90 . turn180
+
+prop_FourRotate90sIsTheIdentity a p =
+  let r9a = rotate90 a in
+      (r9a . r9a . r9a . r9a) p == p
+
+prop_Rotate90IsOnlyTheIdentityForTheAxis a p =
+  (rotate90 a p == p) == (a == p)
+
+prop_BoxesThatDoNotShareXOrYValuesAreMeasuredByCornerDistance m@(Box a@(Point x y) b)=
+  forAll northwesternBoxes $ \n@(Box c d) ->
+    distancesOfRotationsAllEqual m n (distance a d)
+    where
+      offsets = sized $ \n -> choose (1,n)
+      northwesternBoxes =
+        do xoff <- offsets
+           yoff <- offsets
+           w <- offsets
+           h <- offsets
+           return (Box (Point (x-xoff-w) (y+yoff+h)) (Point (x-xoff) (y+yoff)))

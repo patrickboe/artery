@@ -72,21 +72,24 @@ distancesOfRotationsAllEqual b1 b2 d =
   all
     (d ==)
     [(distance b1 b2),
-     (distance (turn90 b1) (turn90 b2)),
-     (distance (turn180 b1) (turn180 b2)),
-     (distance (turn270 b1) (turn270 b2))]
-  where
-    orotate = rotate90 (Point 0 0)
-    turn90 (Box p q) = bound (orotate p) (orotate q)
-    turn180 = turn90 . turn90
-    turn270 = turn90 . turn180
+     (distance (rotate90 b1) (rotate90 b2)),
+     (distance (turn 2 b1) (turn 2 b2)),
+     (distance (turn 3 b1) (turn 3 b2))]
 
-prop_FourRotate90sIsTheIdentity a p =
-  let r9a = rotate90 a in
-      (r9a . r9a . r9a . r9a) p == p
+prop_MultipleOfFourRotate90sIsTheIdentity n p = turn (4 * n) p == p
+ where types = (n :: Int, p :: Point)
 
-prop_Rotate90IsOnlyTheIdentityForTheAxis a p =
-  (rotate90 a p == p) == (a == p)
+prop_OneTurnIsOneApplicationOfRotate90 p = rotate90 p == turn 1 p
+ where types = (p :: Point)
+
+prop_MultipleOfFourRotate90sForBoxesIsTheIdentity n b = turn (4 * n) b == b
+ where types = (n :: Int, b :: Box)
+
+prop_OneTurnIsOneApplicationOfRotate90ForBoxes b = rotate90 b == turn 1 b
+ where types = (b :: Box)
+
+prop_Rotate90IsOnlyTheIdentityForTheOrigin p =
+  (rotate90 p == p) == (p == (Point 0 0))
 
 prop_BoxesThatDoNotShareXOrYValuesAreMeasuredByCornerDistance m@(Box a@(Point x y) b)=
   forAll northwesternBoxes $ \n@(Box c d) ->

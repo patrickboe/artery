@@ -101,26 +101,8 @@ farthestPairFirst (x : (y : xs)) =
               then (x : (z : (y : xs)))
               else (y : (z : (x : xs)))
           where
-            nodeDist = boxDist `on` getBox
+            nodeDist = distance `on` getBox
 farthestPairFirst xs = xs
-
-boxDist x y = 0
-
-{-
-boxDist b1@(Box p1 p2) b2@(Box p3 p4) =
-  if b1 `overlaps` b2
-  then 0
-  else minimum $ zip edgeDist [rightEdge b1,leftEdge b1]) [leftEdge b2,rightEdge b2]
-
-rightEdge :: Box -> Edge
-leftEdge b = Edge (Point 0 0) (Point 0 0)
-
-leftEdge :: Box -> Edge
-leftEdge b = Edge (Point 0 0) (Point 0 0)
-
-edgeDist :: Edge -> Edge -> Int
-edgeDist e1 e2 = 0
--}
 
 remove :: (RTree a) -> (Entry a) -> (RTree a)
 remove t e = t

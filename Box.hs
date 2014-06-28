@@ -1,8 +1,6 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 module Box
-  (
-   Point(Point), Box(Box), leftOf, rightOf, above, below, fuse, contains, area, toBox, bound, distance, rotate90, turn, norm
-  )
+  (Point(Point), Box(Box), leftOf, rightOf, above, below, fuse, contains, area, toBox, bound, distance, rotate90, turn)
   where
 
 import Set
@@ -20,12 +18,17 @@ instance Set Box Box where
 
 class Geometric a where
   rotate90 :: a -> a
-  distance :: a -> a -> Double
+  distance :: (Floating b, Ord b) => a -> a -> b
 
 instance Geometric Point where
   rotate90 (Point x y) = (Point y (-x))
   distance (Point x1 y1) (Point x2 y2) =
-    sqrt $ fromIntegral $ ((x2 - x1) ^ 2) + ((y2 - y1) ^ 2)
+    hypot (fromIntegral (x2 - x1)) (fromIntegral (y2 - y1))
+
+hypot x y
+  | x < y     = h x y
+  | otherwise = h y x
+  where h x y = (abs x) * (sqrt (1 + ((y / x) ^ 2)))
 
 fuse (Box (Point x1 y1) (Point x2 y2)) (Box (Point x3 y3) (Point x4 y4)) =
   Box (Point (min x1 x3) (min y1 y3)) (Point (max x2 x4) (max y2 y4))
@@ -53,11 +56,6 @@ turn n
   | n == 0 = id
   | otherwise = rotate90 . (turn $ n - 1)
 
-norm unnormalized@(b@(Box (Point x y) _) : others) =
-  map n unnormalized where
-    n (Box (Point x1 y1) (Point x2 y2)) =
-      Box (Point (x1-x) (y1-y)) (Point (x2-x) (y2-y))
-
 data OverlapCategory = Ordered | Reversed | Mixed
 
 instance Geometric Box where
@@ -84,7 +82,7 @@ instance Geometric Box where
                    Mixed -> 0
     where
 
-      extract f (Box a b) = [f a,f b]
+      extract f (Box a b) = (f a,f b)
 
       getx (Point x y) = x
 
@@ -102,9 +100,7 @@ instance Geometric Box where
       northeastDistance (Box a b) (Box c d) =
         distance b c
 
-      categorize l r
-        | sorted == l ++ r = Ordered
-        | sorted == r ++ l = Reversed
+      categorize (l1 , l2) (r1 , r2)
+        | l2 < r1 = Ordered
+        | r2 < l1 = Reversed
         | otherwise = Mixed
-        where
-          sorted = sort (l ++ r)

@@ -53,7 +53,7 @@ subsetsOf = Set.foldr maybeWith (return Set.empty) where
       do xs <- xsg
          oneof [return (Set.insert x xs), return xs]
 
-prop_InsertAugmentsComputedSet es rt =
+prop_WithAugmentsComputedSet es rt =
   let rt' = foldl' with rt es
   in toSet rt' == toSet rt `Set.union` Set.fromList es
   where types = (es :: [Entry Int],rt :: RTree Int)

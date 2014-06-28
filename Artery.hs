@@ -1,9 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, StandaloneDeriving, FlexibleInstances #-}
-module Artery
-  (
-   RTree, Entry(Entry), buildRTree, contains, with, entries, remove,
-   find
-  )
+module Artery (RTree, Entry(Entry), buildRTree, contains, with, entries, remove, find)
   where
 
 import Data.List hiding (find)
@@ -89,13 +85,13 @@ split ns =
 
 farthestPairFirst (x : (y : xs)) =
   foldl' swapForFarther (x : (y : [])) xs
-  where swapForFarther orig@(x : (y : xs)) z =
+  where swapForFarther (x : (y : xs)) z =
           let xyd = nodeDist x y
               xzd = nodeDist x z
               yzd = nodeDist y z
           in
             if (xyd > xzd) && (xyd > yzd)
-            then orig
+            then (x : (y : (z : xs)))
             else
               if (xzd > xyd) && (xzd > yzd)
               then (x : (z : (y : xs)))

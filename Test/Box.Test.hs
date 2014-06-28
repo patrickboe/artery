@@ -97,14 +97,15 @@ prop_OneTurnIsOneApplicationOfRotate90ForBoxes b = rotate90 b == turn 1 b
 prop_Rotate90IsOnlyTheIdentityForTheOrigin p =
   (rotate90 p == p) == (p == (Point 0 0))
 
-prop_BoxesThatDoNotShareXOrYValuesAreMeasuredByCornerDistance m@(Box a@(Point x y) b)=
-  forAll northwesternBoxes $ \n@(Box c d) ->
-    distancesOfRotationsAllEqual m n (distance a d)
+prop_BoxesThatDoNotShareXOrYValuesAreMeasuredByCornerDistance m@(Box a b@(Point x y))=
+  forAll northeasternBoxes $ \n@(Box c d) ->
+    distancesOfRotationsAllEqual m n (distance b c)
     where
-      offsets = sized $ \n -> choose (1,n)
-      northwesternBoxes =
-        do xoff <- offsets
-           yoff <- offsets
-           w <- offsets
-           h <- offsets
-           return (Box (Point (x-xoff-w) (y+yoff+h)) (Point (x-xoff) (y+yoff)))
+      offsets i = sized $ \n -> choose (i, i + n)
+      northeasternBoxes =
+        do xoff <- offsets 1
+           yoff <- offsets 1
+           w <- offsets 0
+           h <- offsets 0
+           return $
+             bound (Point (x+xoff) (y+yoff)) (Point (x+xoff+w) (y+yoff+h))

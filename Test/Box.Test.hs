@@ -12,9 +12,13 @@ import Data.List
 
 runTests = $quickCheckAll
 
-prop_BoxesWithAnUncommonPointAreUnequal w x y z =
-  threeUnequal [w,x,y,z] ==> bound w x /= bound y z
-    where threeUnequal = (> 2) . length . nub
+prop_BoxesWithMoreThanTwoDifferentXesAndYsAreUnequal w x y z =
+  (tooMany xs) || (tooMany ys) ==> bound w x /= bound y z
+  where
+    xs (Point x _) = x
+    ys (Point _ y) = y
+    tooMany f = threeUnequal (map f [w,x,y,z])
+    threeUnequal = (> 2) . length . nub
 
 prop_EqualBoxesContainEachOther b = b `contains` b
   where types = [b :: Box]
@@ -46,17 +50,17 @@ prop_FuseProducesABoxContainingThePreviousTwoBoxes b1 b2 =
   let papa = fuse b1 b2 in
       papa `contains` b1 && papa `contains` b2
 
-prop_OverlappingBoxesHaveZeroDistance b =
-  forAll (overlappingBoxesOf b) $ \b' -> distance b b' == 0
+prop_OverlappingBoxesHaveZeroDistance b@(Box (Point x1 y1) (Point x2 y2)) =
+  forAll overlappingBoxes $ \b' -> distance b b' == 0
     where
-      overlappingBoxesOf (Box (Point x1 y1) (Point x2 y2)) =
+      overlappingBoxes =
         do x <- choose (x1, x2)
            y <- choose (y1, y2)
-           xoffset <- choose (0, x2-x1)
-           yoffset <- choose (0, y2-y1)
+           xoffset <- choose (x1-x2, x2-x1)
+           yoffset <- choose (y1-y2, y2-y1)
            oneof [
-            return (Box (Point x y) (Point (x+xoffset) (y+yoffset))),
-            return (Box (Point (x-xoffset) (y-yoffset)) (Point x y))
+            return (bound (Point x y) (Point (x+xoffset) (y+yoffset))),
+            return (bound (Point (x+xoffset) (y+yoffset)) (Point x y))
             ]
 
 prop_DistanceIsCommutative a b = distance a b == distance b a
@@ -76,14 +80,16 @@ distancesOfRotationsAllEqual b1 b2 d =
      (distance (turn 2 b1) (turn 2 b2)),
      (distance (turn 3 b1) (turn 3 b2))]
 
-prop_MultipleOfFourRotate90sIsTheIdentity n p = turn (4 * n) p == p
- where types = (n :: Int, p :: Point)
+prop_MultipleOfFourRotate90sIsTheIdentity p =
+ (turn 4 p == p) && (turn 0 p == p)
+ where types = (p :: Point)
 
 prop_OneTurnIsOneApplicationOfRotate90 p = rotate90 p == turn 1 p
  where types = (p :: Point)
 
-prop_MultipleOfFourRotate90sForBoxesIsTheIdentity n b = turn (4 * n) b == b
- where types = (n :: Int, b :: Box)
+prop_MultipleOfFourRotate90sForBoxesIsTheIdentity b =
+ (turn 4 b == b) && (turn 0 b == b)
+ where types = (b :: Box)
 
 prop_OneTurnIsOneApplicationOfRotate90ForBoxes b = rotate90 b == turn 1 b
  where types = (b :: Box)

@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 module Box
   (
-   Point(Point), Box(Box), leftOf, rightOf, above, below, fuse, contains, area, toBox, bound, distance, rotate90, turn
+   Point(Point), Box(Box), leftOf, rightOf, above, below, fuse, contains, area, toBox, bound, distance, rotate90, turn, norm
   )
   where
 
@@ -20,7 +20,7 @@ instance Set Box Box where
 
 class Geometric a where
   rotate90 :: a -> a
-  distance :: Floating b => a -> a -> b
+  distance :: a -> a -> Double
 
 instance Geometric Point where
   rotate90 (Point x y) = (Point y (-x))
@@ -51,7 +51,12 @@ origin = toBox (Point 0 0)
 
 turn n
   | n == 0 = id
-  | otherwise = (turn (n - 1)) . rotate90
+  | otherwise = rotate90 . (turn $ n - 1)
+
+norm unnormalized@(b@(Box (Point x y) _) : others) =
+  map n unnormalized where
+    n (Box (Point x1 y1) (Point x2 y2)) =
+      Box (Point (x1-x) (y1-y)) (Point (x2-x) (y2-y))
 
 data OverlapCategory = Ordered | Reversed | Mixed
 
@@ -66,12 +71,12 @@ instance Geometric Box where
     in
       case xcategory of
         Ordered -> case ycategory of
-                     Ordered -> angleDistance 3
-                     Reversed -> angleDistance 2
+                     Ordered -> angleDistance 0
+                     Reversed -> angleDistance 3
                      Mixed -> sideDistance 2
         Reversed -> case ycategory of
-                      Ordered -> angleDistance 0
-                      Reversed -> angleDistance 1
+                      Ordered -> angleDistance 1
+                      Reversed -> angleDistance 2
                       Mixed -> sideDistance 0
         Mixed -> case ycategory of
                    Ordered -> sideDistance 3
@@ -85,8 +90,8 @@ instance Geometric Box where
 
       gety (Point x y) = y
 
-      angleDistance rotationsToNW =
-        northwestDistance (turn rotationsToNW s) (turn rotationsToNW t)
+      angleDistance rotationsToNE =
+        northeastDistance (turn rotationsToNE s) (turn rotationsToNE t)
 
       sideDistance rotationsToW =
         westDistance (turn rotationsToW s) (turn rotationsToW t)
@@ -94,8 +99,8 @@ instance Geometric Box where
       westDistance (Box (Point x1 y1) p2) (Box p3 (Point x4 y4)) =
         fromIntegral (x1 - x4)
 
-      northwestDistance (Box a b) (Box c d) =
-        distance a d
+      northeastDistance (Box a b) (Box c d) =
+        distance b c
 
       categorize l r
         | sorted == l ++ r = Ordered

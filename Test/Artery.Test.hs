@@ -58,6 +58,10 @@ prop_WithAugmentsComputedSet es rt =
   in toSet rt' == toSet rt `Set.union` Set.fromList es
   where types = (es :: [Entry Int],rt :: RTree Int)
 
+prop_FindIncludesAllEntriesInSearchBox b rt =
+  (Set.fromList $ find rt b) == (Set.filter inBox $ toSet rt)
+  where inBox (Entry p x) = b `contains` (Box p p)
+
 ignore_prop_ATreeContainsExactlyTheSetOfInsertedElements es e =
   let rt = buildRTree es
   in (all (contains rt) es) && ((rt `contains` e) == (e `elem` es))
@@ -66,10 +70,6 @@ ignore_prop_RemoveDiminishesComputedSet es rt =
   forAll (subsetsOf $ toSet rt) $ \sub ->
     let rt' = Set.foldl' remove rt sub
     in toSet rt' == toSet rt `Set.difference` sub
-
-ignore_prop_FindIncludesAllEntriesInSearchBox b rt =
-  (Set.fromList $ find rt b) == (Set.filter inBox $ toSet rt)
-  where inBox (Entry p x) = b `contains` (Box p p)
 
 ignore_prop_AnyRemovalOrderProducesAConsistentSeriesOfEntrySets es =
   forAll (shufflesOf es) $ \removals ->

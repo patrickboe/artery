@@ -21,7 +21,7 @@ deriving instance Ord a => Ord (Entry a)
 deriving instance Show a => Show (Entry a)
 
 instance (Eq a) => Set (RTree a) (Entry a) where
-  contains t x = True
+  contains t (Entry p x) = not $ null $ find t (toBox p)
 
 data Node n = Node Box [n]
 
@@ -104,7 +104,13 @@ remove :: (RTree a) -> (Entry a) -> (RTree a)
 remove t e = t
 
 find :: (RTree a) -> Box -> [(Entry a)]
-find t b = []
+find (Leaf b es) s =
+  filter (s `houses`) es
+  where houses b (Entry p x) = b `contains` p
+find (Branch b ts) s =
+  if b `overlaps` s
+  then concatMap ((flip find) s) ts
+  else []
 
 entries :: (RTree a) -> [(Entry a)]
 entries (Leaf b es) = es

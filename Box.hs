@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 module Box
-  (Point(Point), Box(Box), leftOf, rightOf, above, below, fuse, contains, area, toBox, bound, distance, rotate90, turn)
+  (Point(Point), Box(Box), leftOf, rightOf, above, below, fuse, contains, area, toBox, bound, distance, rotate90, turn, overlaps)
   where
 
 import Set
@@ -15,6 +15,10 @@ data Box = Box Point Point
 instance Set Box Box where
   contains (Box a b) (Box c d) =
     not ((a `rightOf` c) || (a `above` c) || (b `leftOf` d) || (b `below` d))
+
+instance Set Box Point where
+  contains (Box a b) c =
+    not ((c `leftOf` a) || (c `below` a) || (c `above` b) || (c `rightOf` b))
 
 class Geometric a where
   rotate90 :: a -> a
@@ -57,6 +61,28 @@ turn n
   | otherwise = rotate90 . (turn $ n - 1)
 
 data OverlapCategory = Ordered | Reversed | Mixed
+  deriving (Show,Eq)
+
+categorizeBy f a b = categorize (extract f a) (extract f b)
+
+xcategorize = categorizeBy getx
+
+ycategorize = categorizeBy gety
+
+overlaps a b =
+  case (xcategorize a b, ycategorize a b) of ((Mixed),(Mixed)) -> True
+                                             _ -> False
+
+extract f (Box a b) = (f a,f b)
+
+getx (Point x y) = x
+
+gety (Point x y) = y
+
+categorize (l1 , l2) (r1 , r2)
+  | l2 < r1 = Ordered
+  | r2 < l1 = Reversed
+  | otherwise = Mixed
 
 instance Geometric Box where
 
@@ -64,8 +90,8 @@ instance Geometric Box where
 
   distance s@(Box as bs) t@(Box at bt) =
     let
-      xcategory = categorize (extract getx s) (extract getx t)
-      ycategory = categorize (extract gety s) (extract gety t)
+      xcategory = xcategorize s t
+      ycategory = ycategorize s t
     in
       case xcategory of
         Ordered -> case ycategory of
@@ -82,12 +108,6 @@ instance Geometric Box where
                    Mixed -> 0
     where
 
-      extract f (Box a b) = (f a,f b)
-
-      getx (Point x y) = x
-
-      gety (Point x y) = y
-
       angleDistance rotationsToNE =
         northeastDistance (turn rotationsToNE s) (turn rotationsToNE t)
 
@@ -99,8 +119,3 @@ instance Geometric Box where
 
       northeastDistance (Box a b) (Box c d) =
         distance b c
-
-      categorize (l1 , l2) (r1 , r2)
-        | l2 < r1 = Ordered
-        | r2 < l1 = Reversed
-        | otherwise = Mixed

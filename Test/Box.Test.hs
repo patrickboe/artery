@@ -50,35 +50,47 @@ prop_FuseProducesABoxContainingThePreviousTwoBoxes b1 b2 =
   let papa = fuse b1 b2 in
       papa `contains` b1 && papa `contains` b2
 
-prop_OverlappingBoxesHaveZeroDistance b@(Box (Point x1 y1) (Point x2 y2)) =
-  forAll overlappingBoxes $ \b' -> distance b b' == 0
+overlappingBoxes (Box (Point x1 y1) (Point x2 y2)) =
+  do x <- choose (x1, x2)
+     y <- choose (y1, y2)
+     xoffset <- choose (x1-x2, x2-x1)
+     yoffset <- choose (y1-y2, y2-y1)
+     oneof [
+      return (bound (Point x y) (Point (x+xoffset) (y+yoffset))),
+      return (bound (Point (x+xoffset) (y+yoffset)) (Point x y))
+      ]
+
+prop_overlapsHasNoFalsePositives b@(Box (Point x1 y1) (Point x2 y2)) =
+  forAll boxesToTheRight $ \b' ->
+    resultHoldsRegardlessOfRotation overlaps b b' False
+  where boxesToTheRight = boxesNEOf x2 y1
+
+prop_overlapsHasNoFalseNegatives b =
+  forAll (overlappingBoxes b) $ \b' ->
+    b `overlaps` b' && b' `overlaps` b
+
+prop_OverlappingBoxesHaveZeroDistance b =
+  forAll (overlappingBoxes b) $ \b' -> distance b b' == 0
     where
-      overlappingBoxes =
-        do x <- choose (x1, x2)
-           y <- choose (y1, y2)
-           xoffset <- choose (x1-x2, x2-x1)
-           yoffset <- choose (y1-y2, y2-y1)
-           oneof [
-            return (bound (Point x y) (Point (x+xoffset) (y+yoffset))),
-            return (bound (Point (x+xoffset) (y+yoffset)) (Point x y))
-            ]
+      overlappingThis = overlappingBoxes b
 
 prop_DistanceIsCommutative a b = distance a b == distance b a
   where types = (a :: Box, b :: Box)
 
 prop_BoxNextToAnotherBoxHasLineToLineDifference =
-  distancesOfRotationsAllEqual
+  resultHoldsRegardlessOfRotation
+    distance
     (Box (Point 1 10) (Point 5 20))
     (Box (Point 3 30) (Point 8 33))
     10
 
-distancesOfRotationsAllEqual b1 b2 d =
+resultHoldsRegardlessOfRotation f b1 b2 r =
   all
-    (d ==)
-    [(distance b1 b2),
-     (distance (rotate90 b1) (rotate90 b2)),
-     (distance (turn 2 b1) (turn 2 b2)),
-     (distance (turn 3 b1) (turn 3 b2))]
+    (== r)
+    [(f b1 b2),
+     (f (turn 1 b1) (turn 1 b2)),
+     (f (turn 2 b1) (turn 2 b2)),
+     (f (turn 3 b1) (turn 3 b2))]
 
 prop_MultipleOfFourRotate90sIsTheIdentity p =
  (turn 4 p == p) && (turn 0 p == p)
@@ -97,15 +109,16 @@ prop_OneTurnIsOneApplicationOfRotate90ForBoxes b = rotate90 b == turn 1 b
 prop_Rotate90IsOnlyTheIdentityForTheOrigin p =
   (rotate90 p == p) == (p == (Point 0 0))
 
+boxesNEOf x y =
+  do xoff <- offsets 1
+     yoff <- offsets 1
+     w <- offsets 0
+     h <- offsets 0
+     return $
+       bound (Point (x+xoff) (y+yoff)) (Point (x+xoff+w) (y+yoff+h))
+  where offsets i = sized $ \n -> choose (i, i + n)
+
 prop_BoxesThatDoNotShareXOrYValuesAreMeasuredByCornerDistance m@(Box a b@(Point x y))=
   forAll northeasternBoxes $ \n@(Box c d) ->
-    distancesOfRotationsAllEqual m n (distance b c)
-    where
-      offsets i = sized $ \n -> choose (i, i + n)
-      northeasternBoxes =
-        do xoff <- offsets 1
-           yoff <- offsets 1
-           w <- offsets 0
-           h <- offsets 0
-           return $
-             bound (Point (x+xoff) (y+yoff)) (Point (x+xoff+w) (y+yoff+h))
+    resultHoldsRegardlessOfRotation distance m n (distance b c)
+    where northeasternBoxes = boxesNEOf x y

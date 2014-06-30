@@ -10,6 +10,7 @@ import Control.Monad
 import Test.QuickCheck
 import Test.QuickCheck.All
 import Data.List hiding (find)
+import qualified Data.Foldable as Fold
 import qualified Data.Set as Set
 
 runTests = $quickCheckAll
@@ -46,25 +47,27 @@ instance Arbitrary a => Arbitrary (Entry a) where
 instance Arbitrary a => Arbitrary (RTree a) where
   arbitrary = do e <- arbitrary
                  es <- arbitrary
-                 return $ buildRTree $ e : es
-
-subsetsOf = Set.foldr maybeWith (return Set.empty) where
-  maybeWith x xsg =
-      do xs <- xsg
-         oneof [return (Set.insert x xs), return xs]
+                 case (buildRTree (e : es)) of
+                   Just t -> return t
+                   Nothing -> arbitrary
 
 prop_WithAugmentsComputedSet es rt =
   let rt' = foldl' with rt es
   in toSet rt' == toSet rt `Set.union` Set.fromList es
   where types = (es :: [Entry Int],rt :: RTree Int)
 
+subsetsOf = Set.foldr maybeWith (return Set.empty) where
+  maybeWith x xsg =
+      do xs <- xsg
+         oneof [return (Set.insert x xs), return xs]
+
 prop_FindIncludesAllEntriesInSearchBox b rt =
   (Set.fromList $ find rt b) == (Set.filter inBox $ toSet rt)
   where inBox (Entry p x) = b `contains` (Box p p)
 
-ignore_prop_ATreeContainsExactlyTheSetOfInsertedElements es e =
-  let rt = buildRTree es
-  in (all (contains rt) es) && ((rt `contains` e) == (e `elem` es))
+prop_ATreeContainsExactlyTheSetOfInsertedElements es e =
+  Fold.all containsSelf (buildRTree es)
+  where containsSelf rt = (all (contains rt) es) && ((rt `contains` e) == (e `elem` es))
 
 ignore_prop_RemoveDiminishesComputedSet es rt =
   forAll (subsetsOf $ toSet rt) $ \sub ->
@@ -73,11 +76,17 @@ ignore_prop_RemoveDiminishesComputedSet es rt =
 
 ignore_prop_AnyRemovalOrderProducesAConsistentSeriesOfEntrySets es =
   forAll (shufflesOf es) $ \removals ->
-    all sameEntrySets $ scanl (flip removeFromBoth) ((buildRTree es),es) removals
+    Fold.all
+    (\rt ->
+      all sameEntrySets $ scanl (flip removeFromBoth) (rt,es) removals)
+    (buildRTree es)
 
 ignore_prop_AnySequenceOfInsertionsAndRemovalsProducesConsistentEntrySets es acts =
-  all sameEntrySets $ scanl run ((buildRTree es),es) acts
-  where run tuple (Act f) = f tuple
+  Fold.all sequenceRunsCorrectly (buildRTree es)
+  where
+    sequenceRunsCorrectly rt =
+      all sameEntrySets $ scanl run (rt,es) acts
+      where run tuple (Act f) = f tuple
 
 {-
   -- todo:

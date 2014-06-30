@@ -10,7 +10,8 @@ import Data.Function
 data RTree a =
   Leaf Box [Entry a] | Branch Box [RTree a]
 
-buildRTree (e : es) = foldl' with (Leaf (getBox e) [e]) es
+buildRTree (e : es) = Just $ foldl' with (Leaf (getBox e) [e]) es
+buildRTree [] = Nothing
 
 deriving instance Show a => Show (RTree a)
 

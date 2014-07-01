@@ -45,11 +45,8 @@ instance Arbitrary a => Arbitrary (Entry a) where
   arbitrary = arb2 Entry
 
 instance Arbitrary a => Arbitrary (RTree a) where
-  arbitrary = do e <- arbitrary
-                 es <- arbitrary
-                 case (buildRTree (e : es)) of
-                   Just t -> return t
-                   Nothing -> arbitrary
+  arbitrary = do es <- arbitrary
+                 return $ buildRTree es
 
 prop_WithAugmentsComputedSet es rt =
   let rt' = foldl' with rt es
@@ -66,27 +63,21 @@ prop_FindIncludesAllEntriesInSearchBox b rt =
   where inBox (Entry p x) = b `contains` (Box p p)
 
 prop_ATreeContainsExactlyTheSetOfInsertedElements es e =
-  Fold.all containsSelf (buildRTree es)
-  where containsSelf rt = (all (contains rt) es) && ((rt `contains` e) == (e `elem` es))
+  let rt = buildRTree es
+  in (all (contains rt) es) && ((rt `contains` e) == (e `elem` es))
 
-ignore_prop_RemoveDiminishesComputedSet es rt =
+prop_RemoveDiminishesComputedSet es rt =
   forAll (subsetsOf $ toSet rt) $ \sub ->
     let rt' = Set.foldl' remove rt sub
     in toSet rt' == toSet rt `Set.difference` sub
 
-ignore_prop_AnyRemovalOrderProducesAConsistentSeriesOfEntrySets es =
+prop_AnyRemovalOrderProducesAConsistentSeriesOfEntrySets es =
   forAll (shufflesOf es) $ \removals ->
-    Fold.all
-    (\rt ->
-      all sameEntrySets $ scanl (flip removeFromBoth) (rt,es) removals)
-    (buildRTree es)
+    all sameEntrySets $ scanl (flip removeFromBoth) (buildRTree es,es) removals
 
-ignore_prop_AnySequenceOfInsertionsAndRemovalsProducesConsistentEntrySets es acts =
-  Fold.all sequenceRunsCorrectly (buildRTree es)
-  where
-    sequenceRunsCorrectly rt =
-      all sameEntrySets $ scanl run (rt,es) acts
-      where run tuple (Act f) = f tuple
+prop_AnySequenceOfInsertionsAndRemovalsProducesConsistentEntrySets es acts =
+  all sameEntrySets $ scanl run ((buildRTree es),es) acts
+  where run tuple (Act f) = f tuple
 
 {-
   -- todo:

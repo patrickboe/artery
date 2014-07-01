@@ -7,12 +7,14 @@ import Set
 import Box
 import Data.Function
 
-data RTree a =
-  Leaf Box [Entry a] | Branch Box [RTree a]
+data RT a =
+  Leaf Box [Entry a] | Branch Box [RT a]
 
-buildRTree (e : es) = Just $ foldl' with (Leaf (getBox e) [e]) es
-buildRTree [] = Nothing
+newtype RTree a = RTree (Maybe (RT a))
 
+buildRTree = foldl' with $ RTree Nothing
+
+deriving instance Show a => Show (RT a)
 deriving instance Show a => Show (RTree a)
 
 data Entry a = Entry Point a
@@ -22,15 +24,17 @@ deriving instance Ord a => Ord (Entry a)
 deriving instance Show a => Show (Entry a)
 
 instance (Eq a) => Set (RTree a) (Entry a) where
-  contains t (Entry p x) = not $ null $ find t (toBox p)
+  contains t (Entry p x) =
+    not $ null $ filter isx $ find t (toBox p)
+    where isx (Entry a y) = y == x
 
 data Node n = Node Box [n]
 
 class Boxed c a where
   getBox :: (c a) -> Box
-  buildTree :: Box -> [c a] -> RTree a
+  buildTree :: Box -> [c a] -> RT a
 
-instance Boxed RTree a where
+instance Boxed RT a where
   getBox (Leaf b _) = b
   getBox (Branch b _) = b
   buildTree = Branch
@@ -49,17 +53,20 @@ minFirst f xs = foldl' consMin [] xs
       else x:(best:rest)
     consMin [] x = [x]
 
-with :: (RTree a) -> (Entry a) -> (RTree a)
-with (Leaf b es) e =
-  expand Leaf (e : es) b (getBox e)
-with (Branch b ts) e =
-  let
-    ebox = getBox e
-    boundArea b t = area $ fuse (getBox t) b
-    st:sts = minFirst (boundArea ebox) ts
-    subtrees = (with st e) : sts
-  in
-    expand Branch subtrees b ebox
+with (RTree (Just t)) e = RTree $ Just $ insert t e
+  where
+    insert :: (RT a) -> (Entry a) -> (RT a)
+    insert (Leaf b es) e =
+      expand Leaf (e : es) b (getBox e)
+    insert (Branch b ts) e =
+      let
+        ebox = getBox e
+        boundArea b t = area $ fuse (getBox t) b
+        st:sts = minFirst (boundArea ebox) ts
+        subtrees = (insert st e) : sts
+      in
+        expand Branch subtrees b ebox
+with (RTree (Nothing)) e = RTree $ Just $ Leaf (getBox e) [e]
 
 expand cons ts b box =
   {- TODO: cut out this unnecessary count -}
@@ -105,14 +112,20 @@ remove :: (RTree a) -> (Entry a) -> (RTree a)
 remove t e = t
 
 find :: (RTree a) -> Box -> [(Entry a)]
-find (Leaf b es) s =
-  filter (s `houses`) es
-  where houses b (Entry p x) = b `contains` p
-find (Branch b ts) s =
-  if b `overlaps` s
-  then concatMap ((flip find) s) ts
-  else []
+find (RTree (Just t)) s = seek t s
+  where
+    seek (Leaf b es) s =
+      filter (s `houses`) es
+      where houses b (Entry p x) = b `contains` p
+    seek (Branch b ts) s =
+      if b `overlaps` s
+      then concatMap ((flip seek) s) ts
+      else []
+find (RTree (Nothing)) s = []
 
 entries :: (RTree a) -> [(Entry a)]
-entries (Leaf b es) = es
-entries (Branch b ts) = foldr1 (++) $ map entries ts
+entries (RTree (Just t)) = ents t
+  where
+    ents (Leaf b es) = es
+    ents (Branch b ts) = foldr1 (++) $ map ents ts
+entries (RTree (Nothing)) = []

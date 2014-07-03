@@ -3,6 +3,7 @@ module Artery (RTree, Entry(Entry), buildRTree, contains, with, entries, remove,
   where
 
 import Data.List hiding (find)
+import Data.Maybe
 import Set
 import Box
 import Data.Function
@@ -108,20 +109,41 @@ farthestPairFirst (x : (y : xs)) =
             nodeDist = distance `on` getBox
 farthestPairFirst xs = xs
 
-remove :: (RTree a) -> (Entry a) -> (RTree a)
-remove t e = t
+remove (RTree (Just t)) e = RTree $ delete t e
+  where
+    delete a@(Leaf b es) e =
+      let sbox = getBox e
+      in
+        if b `overlaps` sbox
+        then prune $ filter (not . (sbox `houses`)) es
+        else Just a
+    delete a@(Branch b ts) s =
+      if b `overlaps` (getBox s)
+      then prune $ catMaybes $ map (flip delete s) ts
+      else Just a
+    prune [] = Nothing
+    prune xs = Just $ buildTree (wrap xs) xs
+    wrap :: (Boxed c a) => [c a] -> Box
+    wrap = (foldl1' fuse) . (map getBox)
+
+{- TODO: abstract with this overlapCondition b1 b2 over notOver -}
+
+remove (RTree (Nothing)) _ = (RTree (Nothing))
 
 find :: (RTree a) -> Box -> [(Entry a)]
 find (RTree (Just t)) s = seek t s
   where
     seek (Leaf b es) s =
-      filter (s `houses`) es
-      where houses b (Entry p x) = b `contains` p
+      if b `overlaps` s
+      then filter (s `houses`) es
+      else []
     seek (Branch b ts) s =
       if b `overlaps` s
-      then concatMap ((flip seek) s) ts
+      then concatMap (flip seek s) ts
       else []
 find (RTree (Nothing)) s = []
+
+houses b (Entry p x) = b `contains` p
 
 entries :: (RTree a) -> [(Entry a)]
 entries (RTree (Just t)) = ents t

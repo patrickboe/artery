@@ -126,20 +126,18 @@ remove (RTree (Just t)) e = RTree $ delete t e
     wrap :: (Boxed c a) => [c a] -> Box
     wrap = (foldl1' fuse) . (map getBox)
 
-{- TODO: abstract with this overlapCondition b1 b2 over notOver -}
-
 remove (RTree (Nothing)) _ = (RTree (Nothing))
 
 find :: (RTree a) -> Box -> [(Entry a)]
 find (RTree (Just t)) s = seek t s
   where
     seek (Leaf b es) s =
-      if b `overlaps` s
-      then filter (s `houses`) es
-      else []
+      forAllOverlaps b es s $ filter (s `houses`)
     seek (Branch b ts) s =
+      forAllOverlaps b ts s (concatMap $ flip seek s)
+    forAllOverlaps b xs s f =
       if b `overlaps` s
-      then concatMap (flip seek s) ts
+      then f xs
       else []
 find (RTree (Nothing)) s = []
 

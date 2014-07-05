@@ -44,7 +44,7 @@ instance Boxed Entry a where
   getBox (Entry p _) = toBox p
   buildTree = Leaf
 
-blocksize = 4
+blocksize = 50
 
 minFirst f xs = foldl' consMin [] xs
   where

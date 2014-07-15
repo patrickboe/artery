@@ -9,7 +9,7 @@ import Test.Arbitrary
 import Control.Monad
 import Test.QuickCheck
 import Test.QuickCheck.All
-import Data.List hiding (find)
+import Data.List
 import qualified Data.Foldable as Fold
 import qualified Data.Set as Set
 
@@ -58,8 +58,8 @@ subsetsOf = Set.foldr maybeWith (return Set.empty) where
       do xs <- xsg
          oneof [return (Set.insert x xs), return xs]
 
-prop_FindIncludesAllEntriesInSearchBox b rt =
-  (Set.fromList $ find rt b) == (Set.filter inBox $ toSet rt)
+prop_SearchIncludesAllEntriesInSearchBox b rt =
+  (Set.fromList $ search rt b) == (Set.filter inBox $ toSet rt)
   where inBox (Entry p x) = b `contains` (Box p p)
 
 prop_ATreeContainsExactlyTheSetOfInsertedElements es e =

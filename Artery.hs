@@ -1,8 +1,12 @@
 {-# LANGUAGE MultiParamTypeClasses, StandaloneDeriving, FlexibleInstances #-}
-module Artery (RTree, Entry(Entry), buildRTree, contains, with, entries, remove, find)
+module Artery (RTree, Entry(Entry), buildRTree, contains, with, entries, remove, search, talliedSearch)
   where
 
-import Data.List hiding (find)
+import Control.Monad.Trans.Class
+import Control.Monad.Writer.Lazy
+import Data.Monoid
+import Control.Monad
+import Data.List
 import Data.Maybe
 import Set
 import Box
@@ -26,7 +30,7 @@ deriving instance Show a => Show (Entry a)
 
 instance (Eq a) => Set (RTree a) (Entry a) where
   contains t (Entry p x) =
-    not $ null $ filter isx $ find t (toBox p)
+    not $ null $ filter isx $ search t (toBox p)
     where isx (Entry a y) = y == x
 
 data Node n = Node Box [n]
@@ -44,7 +48,7 @@ instance Boxed Entry a where
   getBox (Entry p _) = toBox p
   buildTree = Leaf
 
-blocksize = 50
+blocksize = 500
 
 minFirst f xs = foldl' consMin [] xs
   where
@@ -128,18 +132,27 @@ remove (RTree (Just t)) e = RTree $ delete t e
 
 remove (RTree (Nothing)) _ = (RTree (Nothing))
 
-find :: (RTree a) -> Box -> [(Entry a)]
-find (RTree (Just t)) s = seek t s
+type SearchResultsWithOverlapTally a = WriterT (Sum Int) [] (Entry a)
+
+psearch :: Box -> RT a -> SearchResultsWithOverlapTally a
+psearch s t =
+  case t of
+    (Leaf box entries) ->
+      forOverlaps box entries $ mfilter $ houses s
+    (Branch box trees) ->
+      forOverlaps box trees (>>= psearch s)
   where
-    seek (Leaf b es) s =
-      forAllOverlaps b es s $ filter (s `houses`)
-    seek (Branch b ts) s =
-      forAllOverlaps b ts s (concatMap $ flip seek s)
-    forAllOverlaps b xs s f =
-      if b `overlaps` s
-      then f xs
-      else []
-find (RTree (Nothing)) s = []
+    forOverlaps b xs f =
+      if s `overlaps` b
+      then do tell (Sum 1)
+              (f . lift) xs
+      else mzero
+
+talliedSearch (RTree t) s =
+  maybe mzero (psearch s) t
+
+search (RTree t) s =
+  maybe mzero ((map fst) . (runWriterT . psearch s)) t
 
 houses b (Entry p x) = b `contains` p
 

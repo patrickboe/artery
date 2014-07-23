@@ -24,23 +24,6 @@ sampleEntries =
 
 sampleTree = liftM buildRTree sampleEntries
 
-execTrace rt b =
-  execWriterT $ talliedSearch rt b
-
-trace =
-  do bs <- generate sampleBoxes
-     fes <- generate sampleEntries
-     let
-       rt = buildRTree $ take 10000 fes
-       loop =
-         do
-           putStrLn "which box to get?"
-           x <- getLine
-           putStrLn $ "searching in " ++ x
-           print $ execTrace rt $ bs !! (read x)
-           loop
-     loop
-
 warm rt = length $ search rt (bound (Point 0 0) (Point 0 0))
 
 main =
@@ -51,6 +34,7 @@ main =
          rt1000 = buildRTree $ take 1000 fes
          rt10000 = buildRTree $ take 10000 fes
          rt100000 = buildRTree $ take 100000 fes
+         rt1000000 = buildRTree $ take 1000000 fes
          warm1 = warm rt1000
          warm2 = warm rt10000
          warm3 = warm rt100000

@@ -1,22 +1,26 @@
 {-# LANGUAGE MultiParamTypeClasses, StandaloneDeriving, FlexibleInstances #-}
-module Artery (RTree, Entry(Entry), buildRTree, contains, with, entries, remove, search, talliedSearch)
+module Artery (RTree, Entry(Entry), buildRTree, contains, with, entries, remove, search)
   where
 
 import Control.Monad.Trans.Class
 import Control.Monad.Writer.Lazy
+import Data.List (foldl1')
 import Data.Monoid
 import Control.Monad
-import Data.List
+import Data.Foldable
 import Data.Maybe
+import CList
 import Set
 import Box
 import Data.Function
 
-data RT a =
-  Leaf Box [Entry a] | Branch Box [RT a]
+data RT a = Leaf Box (CList (Entry a)) | Branch Box (CList (RT a))
+
+mcatMaybes = (fmap fromJust) . (mfilter isJust)
 
 newtype RTree a = RTree (Maybe (RT a))
 
+buildRTree :: [Entry a] -> RTree a
 buildRTree = foldl' with $ RTree Nothing
 
 deriving instance Show a => Show (RT a)
@@ -33,11 +37,11 @@ instance (Eq a) => Set (RTree a) (Entry a) where
     not $ null $ filter isx $ search t (toBox p)
     where isx (Entry a y) = y == x
 
-data Node n = Node Box [n]
+data Node n = Node Box (CList n)
 
 class Boxed c a where
   getBox :: (c a) -> Box
-  buildTree :: Box -> [c a] -> RT a
+  buildTree :: Box -> CList (c a) -> RT a
 
 instance Boxed RT a where
   getBox (Leaf b _) = b
@@ -62,39 +66,38 @@ with (RTree (Just t)) e = RTree $ Just $ insert t e
   where
     insert :: (RT a) -> (Entry a) -> (RT a)
     insert (Leaf b es) e =
-      expand Leaf (e : es) b (getBox e)
-    insert (Branch b ts) e =
+      expand Leaf (cons e es) b (getBox e)
+    insert (Branch b (CList n ts)) e =
       let
         ebox = getBox e
         boundArea b t = area $ fuse (getBox t) b
         st:sts = minFirst (boundArea ebox) ts
-        subtrees = (insert st e) : sts
+        subtrees = CList n $ (insert st e) : sts
       in
         expand Branch subtrees b ebox
-with (RTree (Nothing)) e = RTree $ Just $ Leaf (getBox e) [e]
+with (RTree (Nothing)) e = RTree $ Just $ Leaf (getBox e) (CList 1 [e])
 
-expand cons ts b box =
-  {- TODO: cut out this unnecessary count -}
-  (if length ts <= blocksize
-   then cons $ fuse b box
+expand ctor ts b box =
+  (if count ts <= blocksize
+   then ctor $ fuse b box
    else split) ts
 
-split ns =
+split (CList n ns) =
   let (b : (b' : others)) = farthestPairFirst ns
       (l@(Node bl _),r@(Node br _)) =
         foldl'
         splitIter
-        (Node (getBox b) [b], Node (getBox b') [b'])
+        (Node (getBox b) (CList 1 [b]), Node (getBox b') (CList 1 [b']))
         others
-  in Branch (fuse bl br) [develop l, develop r]
+  in Branch (fuse bl br) (CList 2 [develop l, develop r])
   where develop (Node b xs) = buildTree b xs
         splitIter (x@(Node b ns),x'@(Node b' ns')) n =
           let f = fuse (getBox n) b
               f' = fuse (getBox n) b'
           in
             if area f < area f'
-            then (Node f $ n : ns, x')
-            else (x, Node f' $ n : ns')
+            then (Node f $ (cons n ns), x')
+            else (x, Node f' $ (cons n ns'))
 
 farthestPairFirst (x : (y : xs)) =
   foldl' swapForFarther (x : (y : [])) xs
@@ -119,22 +122,20 @@ remove (RTree (Just t)) e = RTree $ delete t e
       let sbox = getBox e
       in
         if b `overlaps` sbox
-        then prune $ filter (not . (sbox `houses`)) es
+        then repot $ mfilter (not . (sbox `houses`)) es
         else Just a
     delete a@(Branch b ts) s =
       if b `overlaps` (getBox s)
-      then prune $ catMaybes $ map (flip delete s) ts
+      then repot $ mcatMaybes $ fmap (flip delete s) ts
       else Just a
-    prune [] = Nothing
-    prune xs = Just $ buildTree (wrap xs) xs
+    repot xs = case xs of
+                 (CList 0 []) -> Nothing
+                 otherwise -> Just $ buildTree (wrap $ els xs) xs
     wrap :: (Boxed c a) => [c a] -> Box
     wrap = (foldl1' fuse) . (map getBox)
 
 remove (RTree (Nothing)) _ = (RTree (Nothing))
 
-type SearchResultsWithOverlapTally a = WriterT (Sum Int) [] (Entry a)
-
-psearch :: Box -> RT a -> SearchResultsWithOverlapTally a
 psearch s t =
   case t of
     (Leaf box entries) ->
@@ -144,21 +145,17 @@ psearch s t =
   where
     forOverlaps b xs f =
       if s `overlaps` b
-      then do tell (Sum 1)
-              (f . lift) xs
-      else mzero
-
-talliedSearch (RTree t) s =
-  maybe mzero (psearch s) t
+      then f xs
+      else mempty
 
 search (RTree t) s =
-  maybe mzero ((map fst) . (runWriterT . psearch s)) t
+  maybe mempty (els . (psearch s)) t
 
 houses b (Entry p x) = b `contains` p
 
 entries :: (RTree a) -> [(Entry a)]
-entries (RTree (Just t)) = ents t
+entries (RTree (Just t)) = case ents t of (CList n es) -> es
   where
     ents (Leaf b es) = es
-    ents (Branch b ts) = foldr1 (++) $ map ents ts
+    ents (Branch b ts) = Data.Foldable.foldr1 mappend $ fmap ents ts
 entries (RTree (Nothing)) = []

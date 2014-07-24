@@ -1,5 +1,5 @@
 {-# LANGUAGE StandaloneDeriving #-}
-module CList (CList(CList), count, cons, els, dcons, ctake, cdrop)
+module CList (CList(CList), count, cons, els, dcons, ctake, cdrop, fromList)
  where
 
 import Data.Monoid
@@ -37,3 +37,6 @@ dcons (CList n (x : xs)) = (x, (CList (n - 1) xs))
 ctake n (CList m xs) = CList n (take n xs)
 
 cdrop n (CList m xs) = CList (m - n) (drop n xs)
+
+fromList :: [a] -> CList a
+fromList xs = CList (length xs) xs

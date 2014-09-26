@@ -116,17 +116,16 @@ farthestPairFirst (x : (y : xs)) =
             nodeDist = distance `on` getBox
 farthestPairFirst xs = xs
 
-remove (RTree (Just t)) e = RTree $ delete t e
+remove (RTree (Just t)) e@(Entry p v) = RTree $ delete t
   where
-    delete a@(Leaf b es) e =
-      let sbox = getBox e
-      in
-        if b `overlaps` sbox
-        then repot $ mfilter (not . (sbox `houses`)) es
-        else Just a
-    delete a@(Branch b ts) s =
-      if b `overlaps` (getBox s)
-      then repot $ mcatMaybes $ fmap (flip delete s) ts
+    sbox = toBox p
+    delete a@(Leaf b es) =
+      if b `overlaps` sbox
+      then repot $ mfilter (not . (e ==)) es
+      else Just a
+    delete a@(Branch b ts) =
+      if b `overlaps` sbox
+      then repot $ mcatMaybes $ fmap delete ts
       else Just a
     repot xs = case xs of
                  (CList 0 []) -> Nothing

@@ -8,35 +8,28 @@ import Criterion.Main
 cvector :: Arbitrary a => Int -> Gen (CList a)
 cvector n = liftM (CList n) (vector n)
 
+xs :: [Int]
+xs = [1..100000]
+
+cs :: CList Int
+cs = CList 100000 xs
+
+sumList f = f (+) xs
+
+sumCList f = f (+) cs
+
 main =
-  do cxs <- generate (cvector 100000)
-     xs <- generate (vector 100000)
-     let
-         sumCList :: Int -> Int
-         sumCList = ((Data.Foldable.foldl1 (+)) . (flip ctake cxs))
-         sumCList' :: Int -> Int
-         sumCList' = ((Data.Foldable.foldl' (+) 0) . (flip ctake cxs))
-         sumList :: Int -> Int
-         sumList = ((Data.List.foldl1 (+)) . (flip take xs))
-         sumList' :: Int -> Int
-         sumList' = ((Data.List.foldl' (+) 0) . (flip take xs))
-         fsumList :: Int -> Int
-         fsumList = ((Data.Foldable.foldl1 (+)) . (flip take xs))
-         fsumList' :: Int -> Int
-         fsumList' = ((Data.Foldable.foldl' (+) 0) . (flip take xs))
-         countCList = count . (flip ctake cxs)
-         countList = length . (flip take xs)
-     defaultMain
+  do defaultMain
        [ bgroup "Folds"
-         [ bench "Sum a List" $ nf sumList 10000
-         , bench "Sum a List using Foldable" $ nf fsumList 10000
-         , bench "Strict Sum a List" $ nf sumList' 10000
-         , bench "Strict Sum a List using Foldable" $ nf fsumList' 10000
-         , bench "Sum a CList" $ nf sumCList 10000
-         , bench "Strict Sum a CList" $ nf sumCList' 10000
+         [ bench "Sum a List" $ nf sumList Data.List.foldl1
+         , bench "Sum a Foldable" $ nf sumList Data.Foldable.foldl1
+         , bench "Strict Sum a List" $ nf sumList (flip Data.List.foldl' 0)
+         , bench "Strict Sum a Foldable" $ nf sumList (flip Data.Foldable.foldl' 0)
+         , bench "Sum a CList" $ nf sumCList Data.Foldable.foldl1
+         , bench "Strict Sum a CList" $ nf sumCList (flip Data.Foldable.foldl' 0)
          ]
        , bgroup "Quantify"
-         [ bench "List Length" $ nf countList 10000
-         , bench "CList Count" $ nf countCList 10000
+         [ bench "List Length" $ nf length xs
+         , bench "CList Length" $ nf count cs
          ]
        ]

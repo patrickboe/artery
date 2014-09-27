@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, StandaloneDeriving, FlexibleInstances #-}
-module Artery (RTree, Entry(Entry), buildRTree, contains, with, entries, remove, search)
+module Artery (RTree, Entry(Entry), buildRTree, contains, insert, entries, remove, search)
   where
 
 import Control.Monad.Trans.Class
@@ -21,7 +21,7 @@ mcatMaybes = (fmap fromJust) . (mfilter isJust)
 newtype RTree a = RTree (Maybe (RT a))
 
 buildRTree :: [Entry a] -> RTree a
-buildRTree = foldl' with $ RTree Nothing
+buildRTree = foldl' insert $ RTree Nothing
 
 deriving instance Show a => Show (RT a)
 deriving instance Show a => Show (RTree a)
@@ -52,7 +52,7 @@ instance Boxed Entry a where
   getBox (Entry p _) = toBox p
   buildTree = Leaf
 
-blocksize = 500
+blocksize = 50
 
 minFirst f xs = foldl' consMin [] xs
   where
@@ -62,7 +62,7 @@ minFirst f xs = foldl' consMin [] xs
       else x:(best:rest)
     consMin [] x = [x]
 
-with (RTree (Just t)) e = RTree $ Just $ insert t e
+insert (RTree (Just t)) e = RTree $ Just $ insert t e
   where
     insert :: (RT a) -> (Entry a) -> (RT a)
     insert (Leaf b es) e =
@@ -75,7 +75,7 @@ with (RTree (Just t)) e = RTree $ Just $ insert t e
         subtrees = CList n $ (insert st e) : sts
       in
         expand Branch subtrees b ebox
-with (RTree (Nothing)) e = RTree $ Just $ Leaf (getBox e) (CList 1 [e])
+insert (RTree (Nothing)) e = RTree $ Just $ Leaf (getBox e) (CList 1 [e])
 
 expand ctor ts b box =
   (if count ts <= blocksize
@@ -116,16 +116,16 @@ farthestPairFirst (x : (y : xs)) =
             nodeDist = distance `on` getBox
 farthestPairFirst xs = xs
 
-remove (RTree (Just t)) e@(Entry p v) = RTree $ delete t
+remove (RTree (Just t)) e@(Entry p v) = RTree $ remove t
   where
     sbox = toBox p
-    delete a@(Leaf b es) =
+    remove a@(Leaf b es) =
       if b `overlaps` sbox
       then repot $ mfilter (not . (e ==)) es
       else Just a
-    delete a@(Branch b ts) =
+    remove a@(Branch b ts) =
       if b `overlaps` sbox
-      then repot $ mcatMaybes $ fmap delete ts
+      then repot $ mcatMaybes $ fmap remove ts
       else Just a
     repot xs = case xs of
                  (CList 0 []) -> Nothing
@@ -135,20 +135,19 @@ remove (RTree (Just t)) e@(Entry p v) = RTree $ delete t
 
 remove (RTree (Nothing)) _ = (RTree (Nothing))
 
-psearch s t =
-  case t of
-    (Leaf box entries) ->
-      forOverlaps box entries $ mfilter $ houses s
-    (Branch box trees) ->
-      forOverlaps box trees (>>= psearch s)
+search (RTree t) s = maybe mempty (els . (search s)) t
   where
-    forOverlaps b xs f =
-      if s `overlaps` b
-      then f xs
-      else mempty
-
-search (RTree t) s =
-  maybe mempty (els . (psearch s)) t
+    search s t =
+      case t of
+        (Leaf box entries) ->
+          forOverlaps box entries $ mfilter $ houses s
+        (Branch box trees) ->
+          forOverlaps box trees (>>= search s)
+      where
+        forOverlaps b xs f =
+          if s `overlaps` b
+          then f xs
+          else mempty
 
 houses b (Entry p x) = b `contains` p
 

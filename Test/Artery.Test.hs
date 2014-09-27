@@ -9,7 +9,7 @@ import Test.Arbitrary
 import Control.Monad
 import Test.QuickCheck
 import Test.QuickCheck.All
-import Data.List
+import qualified Data.List as List
 import qualified Data.Foldable as Fold
 import qualified Data.Set as Set
 
@@ -28,9 +28,9 @@ shufflesOf xs = do i <- oneof $ map return $ indices xs
 
 sameEntrySets (tree, entries) = toSet tree == Set.fromList entries
 
-removeFromBoth e (tree, xs) = (tree `remove` e, delete e xs)
+removeFromBoth e (tree, xs) = (tree `remove` e, List.delete e xs)
 
-addToBoth e (tree, xs) = (tree `with` e, e : xs)
+addToBoth e (tree, xs) = (tree `insert` e, e : xs)
 
 newtype Act a = Act ((RTree a,[Entry a]) -> (RTree a,[Entry a]))
 
@@ -49,7 +49,7 @@ instance Arbitrary a => Arbitrary (RTree a) where
                  return $ buildRTree es
 
 prop_WithAugmentsComputedSet es rt =
-  let rt' = foldl' with rt es
+  let rt' = List.foldl' insert rt es
   in toSet rt' == toSet rt `Set.union` Set.fromList es
   where types = (es :: [Entry Int],rt :: RTree Int)
 

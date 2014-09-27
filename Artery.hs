@@ -1,8 +1,9 @@
 {-# LANGUAGE MultiParamTypeClasses, StandaloneDeriving, FlexibleInstances #-}
-module Artery (RTree, Entry(Entry), buildRTree, contains, insert, entries, remove, search)
+module Artery (RTree, Entry(Entry), buildRTree, contains, insert, entries, remove, search, rnf)
   where
 
 import Control.Monad.Trans.Class
+import Control.DeepSeq
 import Control.Monad.Writer.Lazy
 import Data.List (foldl1')
 import Data.Monoid
@@ -37,6 +38,9 @@ instance (Eq a) => Set (RTree a) (Entry a) where
     not $ null $ filter isx $ search t (toBox p)
     where isx (Entry a y) = y == x
 
+instance NFData (RTree a) where
+  rnf a = entries a `seq` ()
+
 data Node n = Node Box (CList n)
 
 class Boxed c a where
@@ -54,19 +58,13 @@ instance Boxed Entry a where
 
 blocksize = 50
 
-minFirst f xs = foldl' consMin [] xs
-  where
-    consMin (best:rest) x =
-      if f best < f x
-      then best:(x:rest)
-      else x:(best:rest)
-    consMin [] x = [x]
-
 insert (RTree (Just t)) e = RTree $ Just $ insert t e
   where
     insert :: (RT a) -> (Entry a) -> (RT a)
+
     insert (Leaf b es) e =
       expand Leaf (cons e es) b (getBox e)
+
     insert (Branch b (CList n ts)) e =
       let
         ebox = getBox e
@@ -75,46 +73,55 @@ insert (RTree (Just t)) e = RTree $ Just $ insert t e
         subtrees = CList n $ (insert st e) : sts
       in
         expand Branch subtrees b ebox
+
+    minFirst f xs = foldl' consMin [] xs
+      where
+        consMin (best:rest) x =
+          if f best < f x
+          then best:(x:rest)
+          else x:(best:rest)
+        consMin [] x = [x]
+
+    expand ctor ts b box =
+      (if count ts <= blocksize
+       then ctor $ fuse b box
+       else split) ts
+
+    split (CList n ns) =
+      let (b : (b' : others)) = farthestPairFirst ns
+          (l@(Node bl _),r@(Node br _)) =
+            foldl'
+            splitIter
+            (Node (getBox b) (CList 1 [b]), Node (getBox b') (CList 1 [b']))
+            others
+      in Branch (fuse bl br) (CList 2 [develop l, develop r])
+      where develop (Node b xs) = buildTree b xs
+            splitIter (x@(Node b ns),x'@(Node b' ns')) n =
+              let f = fuse (getBox n) b
+                  f' = fuse (getBox n) b'
+              in
+                if area f < area f'
+                then (Node f $ (cons n ns), x')
+                else (x, Node f' $ (cons n ns'))
+
+    farthestPairFirst (x : (y : xs)) =
+      foldl' swapForFarther (x : (y : [])) xs
+      where swapForFarther (x : (y : xs)) z =
+              let xyd = nodeDist x y
+                  xzd = nodeDist x z
+                  yzd = nodeDist y z
+              in
+                if (xyd > xzd) && (xyd > yzd)
+                then (x : (y : (z : xs)))
+                else
+                  if (xzd > xyd) && (xzd > yzd)
+                  then (x : (z : (y : xs)))
+                  else (y : (z : (x : xs)))
+              where
+                nodeDist = distance `on` getBox
+    farthestPairFirst xs = xs
+
 insert (RTree (Nothing)) e = RTree $ Just $ Leaf (getBox e) (CList 1 [e])
-
-expand ctor ts b box =
-  (if count ts <= blocksize
-   then ctor $ fuse b box
-   else split) ts
-
-split (CList n ns) =
-  let (b : (b' : others)) = farthestPairFirst ns
-      (l@(Node bl _),r@(Node br _)) =
-        foldl'
-        splitIter
-        (Node (getBox b) (CList 1 [b]), Node (getBox b') (CList 1 [b']))
-        others
-  in Branch (fuse bl br) (CList 2 [develop l, develop r])
-  where develop (Node b xs) = buildTree b xs
-        splitIter (x@(Node b ns),x'@(Node b' ns')) n =
-          let f = fuse (getBox n) b
-              f' = fuse (getBox n) b'
-          in
-            if area f < area f'
-            then (Node f $ (cons n ns), x')
-            else (x, Node f' $ (cons n ns'))
-
-farthestPairFirst (x : (y : xs)) =
-  foldl' swapForFarther (x : (y : [])) xs
-  where swapForFarther (x : (y : xs)) z =
-          let xyd = nodeDist x y
-              xzd = nodeDist x z
-              yzd = nodeDist y z
-          in
-            if (xyd > xzd) && (xyd > yzd)
-            then (x : (y : (z : xs)))
-            else
-              if (xzd > xyd) && (xzd > yzd)
-              then (x : (z : (y : xs)))
-              else (y : (z : (x : xs)))
-          where
-            nodeDist = distance `on` getBox
-farthestPairFirst xs = xs
 
 remove (RTree (Just t)) e@(Entry p v) = RTree $ remove t
   where
@@ -149,7 +156,7 @@ search (RTree t) s = maybe mempty (els . (search s)) t
           then f xs
           else mempty
 
-houses b (Entry p x) = b `contains` p
+    houses b (Entry p x) = b `contains` p
 
 entries :: (RTree a) -> [(Entry a)]
 entries (RTree (Just t)) = case ents t of (CList n es) -> es

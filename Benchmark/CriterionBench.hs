@@ -1,4 +1,5 @@
 import Control.Monad
+import Control.DeepSeq
 import Control.Monad.Writer.Lazy
 import Criterion.Main
 import Test.QuickCheck
@@ -24,21 +25,15 @@ sampleEntries =
 
 sampleTree = liftM buildRTree sampleEntries
 
-warm rt = length $ search rt (bound (Point 0 0) (Point 0 0))
-
 main =
   do es <- generate sampleEntries
      bs <- generate sampleBoxes
      fes <- generate sampleEntries
-     let buildSample n = warm $ buildRTree $ take n es
+     let buildSample n = buildRTree $ take n es
          rt1000 = buildRTree $ take 1000 fes
          rt10000 = buildRTree $ take 10000 fes
          rt100000 = buildRTree $ take 100000 fes
          rt1000000 = buildRTree $ take 1000000 fes
-         warm1 = warm rt1000
-         warm2 = warm rt10000
-         warm3 = warm rt100000
-         warm4 = warm rt1000000
          runSampleSearches rt = sum . (map $ length . (search rt)) $ take 1000 bs
      defaultMain
        [
@@ -48,7 +43,7 @@ main =
            , bench "with 100000 entries" $ nf buildSample 100000
            , bench "with 1000000 entries" $ nf buildSample 1000000
            ]
-       , warm1 `seq` warm2 `seq` warm3 `seq` warm4 `seq`
+       , rt1000 `deepseq` rt10000 `deepseq` rt100000 `deepseq` rt1000000 `deepseq`
            bgroup "perform 1000 random searches"
              [ bench "in a 1000 node tree" $ nf runSampleSearches rt1000
              , bench "in a 10000 node tree" $ nf runSampleSearches rt10000

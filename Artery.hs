@@ -14,6 +14,7 @@ import CList
 import Set
 import Box
 import Data.Function
+import Debug.Trace
 
 data RT a = Leaf Box (CList (Entry a)) | Branch Box (CList (RT a))
 
@@ -56,7 +57,7 @@ instance Boxed Entry a where
   getBox (Entry p _) = toBox p
   buildTree = Leaf
 
-blocksize = 50
+blocksize = 5
 
 insert (RTree (Just t)) e = RTree $ Just $ insert t e
   where
@@ -94,7 +95,7 @@ insert (RTree (Just t)) e = RTree $ Just $ insert t e
             splitIter
             (Node (getBox b) (CList 1 [b]), Node (getBox b') (CList 1 [b']))
             others
-      in Branch (fuse bl br) (CList 2 [develop l, develop r])
+      in traceEvent "split" $ Branch (fuse bl br) (CList 2 [develop l, develop r])
       where develop (Node b xs) = buildTree b xs
             splitIter (x@(Node b ns),x'@(Node b' ns')) n =
               let f = fuse (getBox n) b
@@ -147,14 +148,14 @@ search (RTree t) s = maybe mempty (els . (search s)) t
     search s t =
       case t of
         (Leaf box entries) ->
-          forOverlaps box entries $ mfilter $ houses s
+          traceEvent "leaf search" $ forOverlaps box entries $ mfilter $ houses s
         (Branch box trees) ->
-          forOverlaps box trees (>>= search s)
+          traceEvent "branch search" $ forOverlaps box trees (>>= search s)
       where
         forOverlaps b xs f =
           if s `overlaps` b
-          then f xs
-          else mempty
+          then traceEvent "overlap" $ f xs
+          else traceEvent "miss" $ mempty
 
     houses b (Entry p x) = b `contains` p
 
